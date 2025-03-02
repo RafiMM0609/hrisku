@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Depends
+from app import app
+import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from models.User import User
@@ -60,3 +62,6 @@ async def read_root(db: AsyncSession = Depends(get_db)):  # <-- Perbaikan di sin
     except Exception as e:
         await db.rollback()  # <-- Hindari data corrupt jika error terjadi
         return {"error": str(e)}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

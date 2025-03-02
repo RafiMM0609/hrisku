@@ -1,12 +1,14 @@
 from sqlalchemy import create_engine, MetaData
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+Base = declarative_base()
 
 # Gunakan asyncpg untuk koneksi async
 SUPABASE_URL = "postgresql+asyncpg://postgres.livlimcygmeebknjkbuq:Anton191969#123@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
 
 # Buat engine async
-async_engine = create_async_engine(SUPABASE_URL, echo=True)
+async_engine = create_async_engine(SUPABASE_URL)
 
 # Buat session async
 AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)

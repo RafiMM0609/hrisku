@@ -44,7 +44,7 @@ router = APIRouter(tags=["Auth"])
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def read_root(
+async def create_ser(
     payload: CreateUserRequest,
     db: AsyncSession = Depends(get_db)
 ):  # <-- Perbaikan di sini
@@ -58,7 +58,7 @@ async def read_root(
         db.add(new_user)
         try:
             await db.commit()
-            await db.refresh(new_user)  # <-- Pastikan data tersimpan sebelum digunakan
+            db.refresh(new_user)  # <-- Pastikan data tersimpan sebelum digunakan
             return {"message": "User added!", "user_id": new_user.id}
         except IntegrityError as e:
             print("ini e: \n", e.orig)

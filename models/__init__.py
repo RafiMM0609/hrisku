@@ -13,11 +13,11 @@ AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_co
 
 
 # Cek koneksi
-try:
-    with async_engine.connect() as connection:
-        print("Connected to Supabase!")
-except Exception as e:
-    print(f"Failed to connect: {e}")
+# try:
+#     with async_engine.connect() as connection:
+#         print("Connected to Supabase!")
+# except Exception as e:
+#     print(f"Failed to connect  async: {e}")
 
 # Dependency untuk mendapatkan session
 async def get_db() -> AsyncSession:
@@ -39,7 +39,7 @@ try:
     with engine.connect() as connection:
         print("Connected to Supabase!")
 except Exception as e:
-    print(f"Failed to connect: {e}")
+    print(f"Failed to connect sync: {e}")
 
 def sync_get_db():
     db = SessionLocal()

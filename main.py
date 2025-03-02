@@ -8,6 +8,7 @@ from settings import (
     ENVIRONTMENT
 )
 
+from routes.auth import router as AuthRouter
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -49,26 +50,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(AuthRouter, prefix="/auth")
+
 @app.get("/")
 async def read_root(db: AsyncSession = Depends(get_db)):  # <-- Perbaikan di sini
     try:
         return {"message": "Hello welcome to hrisku"}
-    except Exception as e:
-        await db.rollback()  # <-- Hindari data corrupt jika error terjadi
-        return {"error": str(e)}
-@app.post("/user")
-async def read_root(db: AsyncSession = Depends(get_db)):  # <-- Perbaikan di sini
-    try:
-        new_user = User(
-            email="user3@example.com",
-            name="John Doe 3",
-            phone="+628123456783",
-            password="hashedpassword123"
-        )
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)  # <-- Pastikan data tersimpan sebelum digunakan
-        return {"message": "User added!", "user_id": new_user.id}
     except Exception as e:
         await db.rollback()  # <-- Hindari data corrupt jika error terjadi
         return {"error": str(e)}

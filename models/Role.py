@@ -15,7 +15,7 @@ class Role(Base):
     updated_by_id = Column("updated_by_id", ForeignKey("user.id"), nullable=True)
     created_at = Column("created_at", DateTime(timezone=True))
     updated_at = Column("updated_at", DateTime(timezone=True))
-    is_active = Column("is_active", Boolean, default=False)
+    isact = Column("isact", Boolean, default=True)
 
     # Many to one
     created_by = relationship(

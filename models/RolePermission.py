@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, Table
+from sqlalchemy import Column, ForeignKey, Integer, Table, Boolean
 from sqlalchemy.orm import relationship
 from models import Base
 
@@ -9,15 +9,21 @@ RolePermission = Table(
     Column(
         "role_id",
         Integer,
-        ForeignKey("role.id", onupdate="CASCADE", ondelete="CASCADE"),
+        ForeignKey("role.id"),
         nullable=False,
         index=True,
     ),
     Column(
         "permission_id",
         Integer,
-        ForeignKey("permission.id", onupdate="CASCADE", ondelete="CASCADE"),
+        ForeignKey("permission.id"),
         nullable=False,
         index=True,
     ),
+    Column(
+        "isact",
+        Boolean,
+        nullable=False,
+        server_default="true"
+    )
 )

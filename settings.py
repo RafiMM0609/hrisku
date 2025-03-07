@@ -1,3 +1,5 @@
+import os
+MYSQL=os.environ.get("MYSQL", "")
 ENVIRONTMENT = 'dev'
 SECRET_KEY='Rx5634F0waUoh8ExHsDq6lGHFbT6u2AwxEXz9UqYIRZorsGV2J15p8LUxtOb9Qx1HqZnrtlMplNaFHkkIYJEVBE6eDgIfRiVh9su'
 ALGORITHM='HS256'

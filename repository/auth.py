@@ -21,7 +21,7 @@ async def check_user_status_by_email(
                 User.is_active == True
             )
 
-    user = await db.execute(query).scalar()
+    user = db.execute(query).scalar()
     return user
 
 
@@ -34,7 +34,7 @@ async def get_user_by_email(
         else:
             # why there is delete_at and is_active
             query = select(User).filter(func.lower(User.email) == email.lower(), User.is_active == True)
-        user = await db.execute(query).scalar()
+        user = db.execute(query).scalar()
         return user
     except Exception as e:
         print(e)
@@ -48,7 +48,7 @@ async def get_user_by_username(
         else:
             # why there is delete_at and is_active
             query = select(User).filter(func.lower(User.username) == username.lower(), User.is_active == True)
-        user = await db.execute(query).scalar()
+        user = db.execute(query).scalar()
         return user
     except Exception as e:
         print(e)
@@ -56,7 +56,7 @@ async def get_user_by_username(
     
 async def delete_user_session(db: AsyncSession, user_id: str, token=str) -> str:
     try:    
-        user_token = await db.execute(
+        user_token = db.execute(
             select(UserToken).filter(
                 UserToken.user_id == user_id,
                 UserToken.token == token
@@ -64,7 +64,7 @@ async def delete_user_session(db: AsyncSession, user_id: str, token=str) -> str:
         ).scalar()
         user_token.is_active = False
         db.add(user_token)
-        await db.commit()
+        db.commit()
         return 'succes'
     except Exception as e:
         print(f"Error delete user session: {e}")
@@ -72,7 +72,7 @@ async def delete_user_session(db: AsyncSession, user_id: str, token=str) -> str:
     
 async def create_user_session(db: AsyncSession, user_id: str, token:str) -> str:
     try:
-        exist_data = await db.execute(
+        exist_data = db.execute(
             select(UserToken).filter(
                 UserToken.user_id == user_id,
                 UserToken.token == token
@@ -81,24 +81,24 @@ async def create_user_session(db: AsyncSession, user_id: str, token:str) -> str:
         if exist_data is not None:
             exist_data.is_active = True
             db.add(exist_data)
-            await db.commit()
+            db.commit()
         else:
             user_token = UserToken(user_id=user_id, token=token)
             db.add(user_token)
-            await db.commit()
+            db.commit()
         return 'succes'
     except Exception as e:
         print(f"Error creating user session: {e}")
 async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_token:str) -> str:
     try:
-        # old_token = await db.execute(
+        # old_token = db.execute(
         #     select(UserToken).filter(
         #         UserToken.token == old_token,
         #         UserToken.user_id == user_id
         #     )
         # ).scalar()
         # old_token.is_active = False
-        exist_data = await db.execute(
+        exist_data = db.execute(
             select(UserToken).filter(
                 UserToken.user_id == user_id,
                 UserToken.token == token
@@ -107,11 +107,11 @@ async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_
         if exist_data is not None:
             exist_data.is_active = True
             db.add(exist_data)
-            await db.commit()
+            db.commit()
         else:
             user_token = UserToken(user_id=user_id, token=token)
             db.add(user_token)
-            await db.commit()
+            db.commit()
         return 'succes'
     except Exception as e:
         print(f"Error creating user session: {e}")
@@ -127,7 +127,7 @@ async def check_user_password(db: AsyncSession, email: str, password: str) -> Op
 async def change_user_password(db: AsyncSession, user: User, new_password: str) -> None:
     user.password = generate_hash_password(password=new_password)
     db.add(user)
-    await db.commit()
+    db.commit()
 
 
 async def generate_token_forgot_password(db: AsyncSession, user: User) -> str:
@@ -137,7 +137,7 @@ async def generate_token_forgot_password(db: AsyncSession, user: User) -> str:
     token = generate_token()
     forgot_password = ForgotPassword(user=user, token=token, created_date = datetime.now(tz=timezone(TZ)))
     db.add(forgot_password)
-    await db.commit()
+    db.commit()
     return token
 
 
@@ -151,7 +151,7 @@ async def change_user_password_by_token(
     db: AsyncSession, token: str, new_password: str
 ) -> Optional[User]:
     query = select(ForgotPassword).where(ForgotPassword.token == token)
-    forgot_password = await db.execute(query).scalar()
+    forgot_password = db.execute(query).scalar()
     if forgot_password == None:
         return None
 
@@ -162,7 +162,7 @@ async def change_user_password_by_token(
     user.password = generate_hash_password(password=new_password)
     db.add(user)
     db.query(ForgotPassword).where(ForgotPassword.user_id == user.id).delete()
-    await db.commit()
+    db.commit()
     return user
 
 
@@ -182,11 +182,11 @@ async def update_profile(
     photo_user: Optional[str] = None
 ) -> bool:
     try:
-        user = await db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise ValueError('User not found')
         if username != None:
-            unit = await db.query(User).where(
+            unit = db.query(User).where(
                 User.username == username,
                 User.id != user_id,
                 ).scalar()
@@ -195,7 +195,7 @@ async def update_profile(
                     f"Username Already Exist"
                 )
         if email != None:
-            unit = await db.query(User).where(
+            unit = db.query(User).where(
                 User.email == email,
                 User.id != user_id,
                 ).scalar()
@@ -209,8 +209,8 @@ async def update_profile(
         if photo_user:
             user.photo_user = photo_user
 
-        await db.commit()
-        await db.refresh(user)
+        db.commit()
+        db.refresh(user)
         return True
 
     except Exception as e:

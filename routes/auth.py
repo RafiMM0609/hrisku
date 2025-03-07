@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from asyncpg.exceptions import UniqueViolationError
 from core.security import generate_hash_password
-from models import get_db, sync_get_db
+from models import get_db
 from models.User import User
 from core.responses import (
     common_response,
@@ -57,7 +57,7 @@ async def create_ser(
         )
         db.add(new_user)
         try:
-            await db.commit()
+            db.commit()
             db.refresh(new_user)  # <-- Pastikan data tersimpan sebelum digunakan
             return {"message": "User added!", "user_id": new_user.id}
         except IntegrityError as e:
@@ -73,7 +73,7 @@ async def create_ser(
             else: 
                 raise
     except Exception as e:
-        await db.rollback()  # <-- Hindari data corrupt jika error terjadi
+        db.rollback()  # <-- Hindari data corrupt jika error terjadi
         return common_response(BadRequest(error=str(e)))
 
 @router.post(

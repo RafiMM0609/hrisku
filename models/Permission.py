@@ -8,16 +8,13 @@ class Permission(Base):
     __tablename__ = "permission"
 
     id = Column("id", Integer, primary_key=True, nullable=False, index=True)
-    module_id = Column(
-        "module_id",
-        ForeignKey("module.id", onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=True,
-    )
-    permission = Column("permission", String, nullable=False)
-    is_active = Column("is_active", Boolean, default=False)
+    name = Column("name", String, nullable=False)
+    isact = Column("isact", Boolean, default=True)
+    order_id = Column("order_id", Integer, nullable=True)
+    created_by_id = Column("created_by_id", ForeignKey("user.id"), nullable=True)
+    updated_by_id = Column("updated_by_id", ForeignKey("user.id"), nullable=True)
+    created_at = Column("created_at", DateTime(timezone=True))
+    updated_at = Column("updated_at", DateTime(timezone=True))
     
     # Many to One
-    module = relationship(
-        "Module", backref="permission_module", foreign_keys=[module_id]
-    )
     roles = relationship("Role", secondary=RolePermission, back_populates="permissions")

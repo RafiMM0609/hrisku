@@ -60,16 +60,16 @@ async def read_root(db: AsyncSession = Depends(get_db)):  # <-- Perbaikan di sin
     try:
         return {"message": "Hello welcome to hrisku"}
     except Exception as e:
-        await db.rollback()  # <-- Hindari data corrupt jika error terjadi
+        db.rollback()  # <-- Hindari data corrupt jika error terjadi
         return {"error": str(e)}
 
-@app.on_event("startup")
-async def startup_event():
-    app.state.db_client = await get_db()
+# @app.on_event("startup")
+# async def startup_event():
+#     app.state.db_client = await get_db()
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    await app.state.db_client.close()
+# @app.on_event("shutdown")
+# async def shutdown_event():
+#     await app.state.db_client.close()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

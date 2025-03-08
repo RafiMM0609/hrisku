@@ -11,6 +11,7 @@ from settings import (
 )
 
 from routes.auth import router as AuthRouter
+from routes.file import router as FileRouter
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -54,6 +55,7 @@ app.add_middleware(
 )
 
 app.include_router(AuthRouter, prefix="/auth")
+app.include_router(FileRouter, prefix="/file")
 
 @app.get("/")
 async def read_root(db: AsyncSession = Depends(get_db)):  # <-- Perbaikan di sini

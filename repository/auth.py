@@ -14,6 +14,7 @@ from pytz import timezone
 from settings import TZ, LOCAL_PATH
 from fastapi import UploadFile
 import os
+import asyncio
 os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
 import cv2
@@ -48,9 +49,13 @@ async def face(
     path = await upload_file_to_local(
             upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
         )
-    resized_img1 = resize_image(f"{LOCAL_PATH}{path}")
-    resized_img2 = resize_image(f"{LOCAL_PATH}{user.photo_face}")
 
+    loop = asyncio.get_running_loop()
+    resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
+    resized_img2 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{user.face_id}")
+    # resized_img1 = resize_image(f"{LOCAL_PATH}{path}")
+    # resized_img2 = resize_image(f"{LOCAL_PATH}{user.face_id}")
+                                            
     #face verification
     obj = DeepFace.verify(
     img1_path = resized_img1, 

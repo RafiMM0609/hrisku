@@ -33,5 +33,5 @@ class NotImplementedResponse(BaseModel):
 
     message: str = "Not Yet implemented"
 
-class CudResponse(BaseModel):
+class CudResponses(BaseModel):
     message:str

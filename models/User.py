@@ -15,6 +15,7 @@ class User(Base):
     name = Column(String, nullable=False)
     photo = Column(String, nullable=False)
     phone = Column(String, nullable=False)
+    face_id = Column(String, nullable=False)
     password = Column(String, unique=True, nullable=False)
     birth_date = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())

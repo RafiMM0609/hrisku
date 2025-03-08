@@ -33,7 +33,7 @@ class Created:
 class CudResponse:
     def __init__(self, data: Optional[Any]) -> None:
         if data != None:
-            self.data = {'message' : data}
+            self.data = {"message" : data}
         else:
             self.data = ""
 

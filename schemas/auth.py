@@ -6,6 +6,7 @@ class CreateUserRequest(BaseModel):
     email: str
     name: str
     phone: str
+    face_id: Optional[str]
     # password: Optional[str]
 
 class LoginRequest(BaseModel):

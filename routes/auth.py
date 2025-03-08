@@ -28,7 +28,7 @@ from schemas.common import (
     BadRequestResponse,
     UnauthorizedResponse,
     InternalServerErrorResponse,
-    CudResponse,
+    CudResponses,
 )
 from schemas.auth import (
     LoginSuccessResponse,
@@ -46,7 +46,7 @@ router = APIRouter(tags=["Auth"])
 
 @router.post("/create-user",
     responses={
-        "200": {"model": CudResponse},
+        "200": {"model": CudResponses},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
@@ -60,6 +60,7 @@ async def create_ser(
             email=payload.email,
             name=payload.name,
             phone=payload.phone,
+            face_id=payload.face_id,
             password=generate_hash_password("0000")
         )
         db.add(new_user)
@@ -158,7 +159,7 @@ async def face(
         )
         if not data:
             raise ValueError('Face not verified')
-        return CudResponse("Face Verification succes")
+        return CudResponse("Verified")
     except Exception as e:
         import traceback
         print("ERROR :",e)

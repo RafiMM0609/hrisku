@@ -1,17 +1,18 @@
 from email import utils
-from fastapi import APIRouter, Depends, Request, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, Request, BackgroundTasks, Request, File, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from asyncpg.exceptions import UniqueViolationError
+from models import get_db
+from core.file import generate_link_download
+from models.User import User
 from core.security import (
     generate_hash_password,
     get_user_permissions,
     get_user_from_jwt_token,
 )
-from models import get_db
-from models.User import User
 from core.responses import (
     common_response,
     Ok,
@@ -35,6 +36,7 @@ from schemas.auth import (
     LoginRequest,
     CreateUserRequest,
     MeSuccessResponse,
+    RegisRequest
 )
 # from core.file import generate_link_download
 from repository import auth as authRepo
@@ -79,6 +81,88 @@ async def create_ser(
                 raise
     except Exception as e:
         db.rollback()  # <-- Hindari data corrupt jika error terjadi
+        return common_response(BadRequest(error=str(e)))
+# @router.post(
+#     "/regis",
+#     responses={
+#         "201": {"model": RegisSuccessResponse},
+#         "400": {"model": BadRequestResponse},
+#         "500": {"model": InternalServerErrorResponse},
+#     },
+# )
+# async def regis(
+#     payload: RegisRequest, 
+#     db: Session = Depends(get_db)
+# ):
+#     try:
+
+#         validated_data = payload.dict()
+#         # errors = RegisUserValidator().validate(validated_data)
+#         # errors_list = [key for key in errors.keys()]
+#         # if errors != {}:
+#         #     print(errors)
+#             # return common_response(BadRequest(custom_response=errors))
+#             # return common_response(BadRequest(message=f"Data that you sent is not valid! please check this field {errors_list}"))
+#         user = await authRepo.create_user(
+#             db=db,
+#             name=payload.name,
+#             email=payload.email,
+#             password=payload.password,
+#             role_id=payload.role_id,
+#             photo_face=payload.photo_face,
+#             photo_user=payload.photo_user
+#             )
+#         token = await generate_jwt_token_from_user(user=user)
+
+#         return common_response(
+#             Ok(
+#                 data={
+#                     "email": user.email,
+#                     "name": user.name,
+#                     "token": token
+#                 }
+#             )
+#         )
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         return common_response(BadRequest(message=str(e)))
+@router.post(
+    "/face",
+        responses={
+        "201": {"model": MeSuccessResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def face(
+    file: UploadFile = File(),
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized(message="Invalid/Expired token"))
+        # file_extension = os.path.splitext(file.filename)[1]
+        # file_name = os.path.splitext(file.filename)[0]
+        # now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        # path = await upload_file(
+        #     upload_file=file, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
+        # )
+        data = await authRepo.face(
+            db=db,
+            user=user,
+            upload_file=file,
+        )
+        if not data:
+            raise ValueError('Face not verified')
+        return CudResponse("Face Verification succes")
+    except Exception as e:
+        import traceback
+        print("ERROR :",e)
+        traceback.print_exc()
         return common_response(BadRequest(error=str(e)))
 
 @router.post(
@@ -130,7 +214,7 @@ async def login(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return common_response(BadRequest(error=str(e)))
+        return common_response(BadRequest(error="Credentials are not valid",detail=str(e)))
 
 
 @router.get(
@@ -143,57 +227,15 @@ async def login(
     },
 )
 async def me(
-        request: Request ,
+        request: Request,
         db: Session = Depends(get_db),
         token: str = Depends(oauth2_scheme)
         ):
     try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
         old_token = token
-        user = request.state.user
-        db = request.state.db
-        ls_unitkerja = []
-        ls_cabang = []
-        wilayah = None
-        zona = None
-        for data in user.unit_kerja:
-            ls_unitkerja.append(
-                {
-                "id": data.id if data else None,
-                "nama": data.name_unit_kerja if data else None
-                }    
-            )
-            ls_cabang.append(
-                {
-                "id": data.cabang.id if data.cabang else None,
-                "nama":data.cabang.name_cabang if data.cabang else None
-                }
-            )
-            wilayah = {
-                "id": data.cabang.wilayah.id,
-                "nama": data.cabang.wilayah.name_wilayah
-            } if data.cabang.wilayah else None
-            zona = {
-                "id": data.cabang.wilayah.zonas[0].id if data.cabang.wilayah.zonas else None,
-                "name_zona": data.cabang.wilayah.zonas[0].name_zona if data.cabang.wilayah.zonas else None,
-            } if data.cabang.wilayah.zonas else None
-        if ls_cabang == [] or ls_unitkerja == []:
-            ls_cabang, ls_unitkerja = await authRepo.getCabangakaUnit(
-                user=user,
-                ls_unitkerja=ls_unitkerja,
-                ls_cabang=ls_cabang,
-            )
-        if wilayah is None:
-            wilayah_nama = await authRepo.getWilayah(db=db, wilayah_id=user.wilayah_id)
-            wilayah = {
-                "id": user.wilayah_id,
-                "nama": wilayah_nama
-            }
-        if zona is None and user.wilayah_id is not None:
-            zona_name, zona_id = await authRepo.getZona(wilayah_id=user.wilayah_id, db=db)
-            zona = {
-                "id":zona_id,
-                "name_zona": zona_name
-            }
         refresh_token = await generate_jwt_token_from_user(user=user)
         # turn on for mobile 
         await authRepo.create_user_session_me(db=db, user_id=user.id, token=token, old_token=old_token)
@@ -202,50 +244,15 @@ async def me(
                 data={
                     "id": str(user.id),
                     "email": user.email,
-                    "username": user.username,
                     "name": user.name,
-                    "is_active": user.is_active,
+                    "isact": user.is_active,
                     "phone": user.phone,
                     "refreshed_token": refresh_token,
                     "image": generate_link_download(user.photo_user),
                     "role": {
                         "id": user.roles[0].id if user.roles else None,
-                        "nama": user.roles[0].name_role if user.roles else None,
-                    },
-                    "unit_kerja": [
-                        {
-                            "id": data['id'],
-                            "nama": data['nama']
-                        } for data in ls_unitkerja
-                    ],
-                    "cabang": [
-                        {
-                            "id": data['id'],
-                            "nama": data['nama']
-                        } for data in ls_cabang
-                    ],
-                    "unit_kerja": [
-                        {
-                            "id": data['id'],
-                            "nama": data['nama']
-                        } for data in ls_unitkerja
-                    ],
-                    "cabang": [
-                        {
-                            "id": data['id'],
-                            "nama": data['nama']
-                        } for data in ls_cabang
-                    ],
-                    "wilayah": {
-                        "id": wilayah['id'] if wilayah is not None else None,
-                        "nama": wilayah['nama'] if wilayah is not None else None,
-                    },
-                    "zona" : {
-                        "id": zona['id'] if zona is not None else None,
-                        "name_zona": zona['name_zona'] if zona is not None else None,
-                    },
-                    "jenis_kelamin": user.jenis_kelamin,
-                    "code_user": user.code_user,
+                        "name": user.roles[0].name_role if user.roles else None,
+                    }
                 }
             )
         )
@@ -253,7 +260,7 @@ async def me(
         import traceback
 
         traceback.print_exc()
-        return common_response(BadRequest(error=str(e)))
+        return common_response(BadRequest(error="Failed get details user",detail=str(e)))
 
 
 @router.post("/token")
@@ -312,4 +319,4 @@ async def permissions(
             )
         )
     except Exception as e:
-        return common_response(BadRequest(error=str(e)))
+        return common_response(BadRequest(error="failed to get permission user",detail=str(e)))

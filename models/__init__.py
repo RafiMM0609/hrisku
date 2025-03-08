@@ -2,14 +2,19 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from settings import (
-    MYSQL
+    DB_HOST,
+    DB_NAME,
+    DB_PASS,
+    DB_PORT,
+    DB_USER
 )
 Base = declarative_base()
 
-SUPABASE_URL = MYSQL
+# SUPABASE_URL = MYSQL
 
 # Buat engine SQLAlchemy
-engine = create_engine(f"{MYSQL}")
+engine = create_engine(f"mysql+mysqlconnector://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+
 
 # Buat sesi database
 SessionLocal = sessionmaker(bind=engine)

@@ -9,7 +9,7 @@ from models.Role import Role
 class User(Base):
     __tablename__ = "user"
 
-    id = Column("id",String(36), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=uuid.uuid4)
     # id = Column("id",UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)

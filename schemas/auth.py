@@ -24,7 +24,13 @@ class LoginSuccessResponse(BaseModel):
 class Organization(BaseModel):
     id:int
     name:str
-
+class RegisRequest(BaseModel):
+    email: str
+    name: str
+    password: str
+    photo_user: Optional[str]
+    photo_face: str
+    role_id: Optional[int]
 class MeSuccessResponse(BaseModel):
     id: str
     email: str

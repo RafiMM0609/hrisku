@@ -5,3 +5,6 @@ __pycache__
 /__pycache__/**
 __pycache__/**
 .env
+storage/**.jpg
+storage/**.png
+storage/tmp/**

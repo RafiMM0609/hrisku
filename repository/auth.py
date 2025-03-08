@@ -1,15 +1,66 @@
 from typing import Optional
 from sqlalchemy import select, func
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.security import validated_user_password, generate_hash_password
 from core.utils import generate_token
+from core.file import upload_file_to_local, delete_file_in_local
 from core.mail import send_reset_password_email
 from models.User import User
 from models.ForgotPassword import ForgotPassword
 from models.UserToken import UserToken
 from datetime import datetime, timedelta
 from pytz import timezone
-from settings import TZ
+from settings import TZ, LOCAL_PATH
+from fastapi import UploadFile
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
+import cv2
+from deepface import DeepFace
+
+backends = [
+  'opencv', 
+  'ssd', 
+  'dlib', 
+  'mtcnn', 
+  'fastmtcnn',
+  'retinaface', 
+  'mediapipe',
+  'yolov8',
+  'yunet',
+  'centerface',
+]
+
+alignment_modes = [True, False]
+def resize_image(image_path, size=(224, 224)):
+    img = cv2.imread(image_path)
+    resized_img = cv2.resize(img, size)
+    return resized_img
+
+async def face(
+    upload_file:UploadFile,
+    user: User,
+    db: Session,
+):
+    file_extension = os.path.splitext(upload_file.filename)[1]
+    now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+    path = await upload_file_to_local(
+            upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
+        )
+    resized_img1 = resize_image(f"{LOCAL_PATH}{path}")
+    resized_img2 = resize_image(f"{LOCAL_PATH}{user.photo_face}")
+
+    #face verification
+    obj = DeepFace.verify(
+    img1_path = resized_img1, 
+    img2_path = resized_img2, 
+    detector_backend = backends[0],
+    align = alignment_modes[0],
+    )
+    delete_file_in_local(folder=LOCAL_PATH, path=path)
+    return obj['verified']
+
 
 async def check_user_status_by_email(
     db: AsyncSession,

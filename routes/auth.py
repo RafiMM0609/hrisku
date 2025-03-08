@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from asyncpg.exceptions import UniqueViolationError
-from core.security import generate_hash_password
+from core.security import (
+    generate_hash_password,
+    get_user_permissions,
+    get_user_from_jwt_token,
+)
 from models import get_db
 from models.User import User
 from core.responses import (
@@ -27,6 +31,7 @@ from schemas.common import (
 )
 from schemas.auth import (
     LoginSuccessResponse,
+    PermissionsResponse,
     LoginRequest,
     CreateUserRequest,
     MeSuccessResponse,
@@ -265,5 +270,46 @@ async def generate_token(
         token = await generate_jwt_token_from_user(user=user)
         await authRepo.create_user_session(db=db, user_id=user.id, token=token)
         return {"access_token": token, "token_type": "Bearer"}
+    except Exception as e:
+        return common_response(BadRequest(error=str(e)))
+    
+@router.get(
+    "/permissions",
+    responses={
+        "200": {"model": PermissionsResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def permissions(
+    request: Request,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        user_permissions = get_user_permissions(db=db, user=user)
+
+        return common_response(
+            Ok(
+                data={
+                    "results": [
+                        {
+                            "id": x.id,
+                            "permission": x.name,
+                            "module": {
+                                "id": x.module.id,
+                                "nama": x.module.name,
+                            }
+                            if x.module != None
+                            else None,
+                        }
+                        for x in user_permissions
+                    ]
+                }
+            )
+        )
     except Exception as e:
         return common_response(BadRequest(error=str(e)))

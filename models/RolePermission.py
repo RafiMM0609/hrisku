@@ -5,7 +5,13 @@ from models import Base
 RolePermission = Table(
     "role_permission",
     Base.metadata,
-    Column("id", Integer, primary_key=True, nullable=False, index=True),
+    Column(
+        "id", 
+        Integer, 
+        primary_key=True, 
+        nullable=False, 
+        index=True
+    ),
     Column(
         "role_id",
         Integer,

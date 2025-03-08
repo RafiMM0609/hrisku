@@ -9,7 +9,7 @@ Base = declarative_base()
 SUPABASE_URL = MYSQL
 
 # Buat engine SQLAlchemy
-engine = create_engine(SUPABASE_URL)
+engine = create_engine(f"{MYSQL}")
 
 # Buat sesi database
 SessionLocal = sessionmaker(bind=engine)
@@ -27,3 +27,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+# base for model
+Base = declarative_base()
+
+from models.UserRole import UserRole
+# from models.User import User
+# from models.Permission import Permission
+# from models.Role import Role

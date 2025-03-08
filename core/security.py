@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError, jwt
+from models.Permission import Permission
 from models.User import User
 # from models.Permission import Permission
 from settings import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM, TZ
@@ -87,8 +88,7 @@ def get_user_from_jwt_token(db: Session, jwt_token: str) -> Optional[User]:
         if payload["exp"] < datetime.now().timestamp():
             return None
         id = payload.get("id")
-        query = select(User).filter(User.id == id)
-
+        query = select(User).where(User.id == id)
         user = db.execute(query).scalar()
     except JWTError:
         return None
@@ -98,16 +98,16 @@ def get_user_from_jwt_token(db: Session, jwt_token: str) -> Optional[User]:
     return user
 
 
-# def get_user_permissions(db: Session, user: User) -> List[Permission]:
-#     permissions = []
+def get_user_permissions(db: Session, user: User) -> List[Permission]:
+    permissions = []
 
-#     # add permission from role
-#     for role in user.roles:
-#         for permission in role.permissions:
-#             exists = [x for x in permissions if x == permission]
-#             if len(exists) == 0:
-#                 permissions.append(permission)
-#     return sorted(permissions, key=lambda d: d.id)
+    # add permission from role
+    for role in user.roles:
+        for permission in role.permissions:
+            exists = [x for x in permissions if x == permission]
+            if len(exists) == 0:
+                permissions.append(permission)
+    return sorted(permissions, key=lambda d: d.id)
 
 
 def is_user_has_permission(

@@ -26,25 +26,27 @@ async def check_user_status_by_email(
 
 
 async def get_user_by_email(
-    db: AsyncSession, email: str, exclude_soft_delete: bool = True
+    db: AsyncSession, email: str, exclude_soft_delete: bool = False
 ) -> Optional[User]:
     try:
         if exclude_soft_delete == True:
-            query = select(User).filter(func.lower(User.email) == email.lower(), User.deleted_at == None)
+            pass
+            # query = select(User).filter(func.lower(User.email) == email.lower(), User.deleted_at == None)
         else:
             # why there is delete_at and is_active
-            query = select(User).filter(func.lower(User.email) == email.lower(), User.is_active == True)
+            query = select(User).filter(func.lower(User.email) == email.lower(), User.isact == True)
         user = db.execute(query).scalar()
         return user
     except Exception as e:
         print(e)
         return None
 async def get_user_by_username(
-    db: AsyncSession, username: str, exclude_soft_delete: bool = True
+    db: AsyncSession, username: str, exclude_soft_delete: bool = False
 ) -> Optional[User]:
     try:
         if exclude_soft_delete == True:
-            query = select(User).filter(func.lower(User.username) == username.lower(), User.deleted_at == None)
+            pass
+            # query = select(User).filter(func.lower(User.username) == username.lower(), User.deleted_at == None)
         else:
             # why there is delete_at and is_active
             query = select(User).filter(func.lower(User.username) == username.lower(), User.is_active == True)

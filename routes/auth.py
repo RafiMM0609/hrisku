@@ -67,7 +67,7 @@ async def create_ser(
         try:
             db.commit()
             db.refresh(new_user)  # <-- Pastikan data tersimpan sebelum digunakan
-            return {"message": "User added!", "user_id": new_user.id}
+            return common_response(CudResponse(message="User added!", data={"user_id": str(new_user.id)}))
         except IntegrityError as e:
             print("ini e: \n", e.orig)
             error_message = str(e.orig)
@@ -82,52 +82,7 @@ async def create_ser(
                 raise
     except Exception as e:
         db.rollback()  # <-- Hindari data corrupt jika error terjadi
-        return common_response(BadRequest(error=str(e)))
-# @router.post(
-#     "/regis",
-#     responses={
-#         "201": {"model": RegisSuccessResponse},
-#         "400": {"model": BadRequestResponse},
-#         "500": {"model": InternalServerErrorResponse},
-#     },
-# )
-# async def regis(
-#     payload: RegisRequest, 
-#     db: Session = Depends(get_db)
-# ):
-#     try:
-
-#         validated_data = payload.dict()
-#         # errors = RegisUserValidator().validate(validated_data)
-#         # errors_list = [key for key in errors.keys()]
-#         # if errors != {}:
-#         #     print(errors)
-#             # return common_response(BadRequest(custom_response=errors))
-#             # return common_response(BadRequest(message=f"Data that you sent is not valid! please check this field {errors_list}"))
-#         user = await authRepo.create_user(
-#             db=db,
-#             name=payload.name,
-#             email=payload.email,
-#             password=payload.password,
-#             role_id=payload.role_id,
-#             photo_face=payload.photo_face,
-#             photo_user=payload.photo_user
-#             )
-#         token = await generate_jwt_token_from_user(user=user)
-
-#         return common_response(
-#             Ok(
-#                 data={
-#                     "email": user.email,
-#                     "name": user.name,
-#                     "token": token
-#                 }
-#             )
-#         )
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()
-#         return common_response(BadRequest(message=str(e)))
+        return common_response(BadRequest(message=str(e)))
 @router.post(
     "/face",
         responses={
@@ -146,12 +101,6 @@ async def face(
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized(message="Invalid/Expired token"))
-        # file_extension = os.path.splitext(file.filename)[1]
-        # file_name = os.path.splitext(file.filename)[0]
-        # now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        # path = await upload_file(
-        #     upload_file=file, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
-        # )
         data = await authRepo.face(
             db=db,
             user=user,
@@ -164,7 +113,7 @@ async def face(
         import traceback
         print("ERROR :",e)
         traceback.print_exc()
-        return common_response(BadRequest(error=str(e)))
+        return common_response(BadRequest(message=str(e)))
 
 @router.post(
     "/login",
@@ -215,7 +164,7 @@ async def login(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return common_response(BadRequest(error="Credentials are not valid",detail=str(e)))
+        return common_response(BadRequest(message=str(e)))
 
 
 @router.get(
@@ -246,10 +195,10 @@ async def me(
                     "id": str(user.id),
                     "email": user.email,
                     "name": user.name,
-                    "isact": user.is_active,
+                    "isact": user.isact,
                     "phone": user.phone,
                     "refreshed_token": refresh_token,
-                    "image": generate_link_download(user.photo_user),
+                    "image": generate_link_download(user.face_id),
                     "role": {
                         "id": user.roles[0].id if user.roles else None,
                         "name": user.roles[0].name_role if user.roles else None,
@@ -261,7 +210,7 @@ async def me(
         import traceback
 
         traceback.print_exc()
-        return common_response(BadRequest(error="Failed get details user",detail=str(e)))
+        return common_response(BadRequest(message=str(e)))
 
 
 @router.post("/token")
@@ -279,7 +228,7 @@ async def generate_token(
         await authRepo.create_user_session(db=db, user_id=user.id, token=token)
         return {"access_token": token, "token_type": "Bearer"}
     except Exception as e:
-        return common_response(BadRequest(error=str(e)))
+        return common_response(BadRequest(message=str(e)))
     
 @router.get(
     "/permissions",
@@ -320,4 +269,4 @@ async def permissions(
             )
         )
     except Exception as e:
-        return common_response(BadRequest(error="failed to get permission user",detail=str(e)))
+        return common_response(BadRequest(message=str(e)))

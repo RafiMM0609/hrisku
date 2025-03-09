@@ -18,7 +18,6 @@ import asyncio
 os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
 import cv2
-from deepface import DeepFace
 
 backends = [
   'opencv', 
@@ -44,6 +43,7 @@ async def face(
     user: User,
     db: Session,
 ):
+    from deepface import DeepFace
     file_extension = os.path.splitext(upload_file.filename)[1]
     now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     path = await upload_file_to_local(

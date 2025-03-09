@@ -2,19 +2,39 @@ from typing import Any, Optional, Union
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse, Response
 
+# class Ok:
+#     def __init__(self, data: Optional[Any]) -> None:
+#         if data != None:
+#             self.data = data
+#         else:
+#             self.data = ""
+
+#     def json(self):
+#         """
+#         parse class to JSONReponse
+#         """
+#         return JSONResponse(content=self.data, status_code=200)
 
 class Ok:
-    def __init__(self, data: Optional[Any]) -> None:
-        if data != None:
-            self.data = data
-        else:
-            self.data = ""
+    def __init__(
+        self, 
+        meta: Optional[Any] = None,
+        data: Optional[Any] = None, 
+        message: Optional[Any] = None,
+    ) -> None:
+        self.response_shape = {
+            "meta": meta if meta is not None else "",
+            "data": data if data is not None else "",
+            "status": "success",
+            "code": 200,
+            "message": message if message is not None else ""
+        }
 
     def json(self):
         """
-        parse class to JSONReponse
+        Parse class to JSONResponse
         """
-        return JSONResponse(content=self.data, status_code=200)
+        return JSONResponse(content=self.response_shape, status_code=200)
 
 
 class Created:
@@ -31,17 +51,25 @@ class Created:
         return JSONResponse(content=self.data, status_code=201)
 
 class CudResponse:
-    def __init__(self, data: Optional[Any]) -> None:
-        if data != None:
-            self.data = {"message" : data}
-        else:
-            self.data = ""
+    def __init__(
+        self, 
+        meta: Optional[Any] = None,
+        data: Optional[Any] = None, 
+        message: Optional[Any] = None,
+    ) -> None:
+        self.response_shape = {
+            "meta": meta if meta is not None else "",
+            "data": data if data is not None else "",
+            "status": "success",
+            "code": 201,
+            "message": message if message is not None else ""
+        }
 
     def json(self):
         """
         parse class to JSONReponse
         """
-        return JSONResponse(content=self.data, status_code=201)
+        return JSONResponse(content=self.response_shape, status_code=201)
 
 class NoContent:
     def __init__(self) -> None:
@@ -77,23 +105,23 @@ class Unauthorized:
 
 class BadRequest:
     def __init__(
-        self, error: str = None, detail: Optional[Any] = None, custom_response: Optional[Any] = None
+        self, 
+        meta: Optional[Any] = None,
+        data: Optional[Any] = None, 
+        message: Optional[Any] = None,
     ) -> None:
-        self.custom_response = None
-        if custom_response == None:
-            self.error = error
-            self.detail = detail
-        else:
-            self.custom_response = custom_response
-
+        self.response_shape = {
+            "meta": meta if meta is not None else "",
+            "data": data if data is not None else "",
+            "status": "failed",
+            "code": 400,
+            "message": message if message is not None else ""
+        }
     def json(self) -> JSONResponse:
         """
         parse class to JSONReponse
         """
-        if self.custom_response == None:
-            return JSONResponse(content={"error": self.error, "detail": self.detail}, status_code=400)
-        else:
-            return JSONResponse(content=self.custom_response, status_code=400)
+        return JSONResponse(content=self.response_shape, status_code=400)
 
 class Forbidden:
     def __init__(self, custom_response: Optional[Any] = None) -> None:

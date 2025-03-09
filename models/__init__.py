@@ -10,16 +10,14 @@ from settings import (
 )
 Base = declarative_base()
 
-# SUPABASE_URL = MYSQL
-
-# Buat engine SQLAlchemy
+# create SQLAlchemy engine
 engine = create_engine(f"mysql+mysqlconnector://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 
-# Buat sesi database
+# Create database session
 SessionLocal = sessionmaker(bind=engine)
 
-# Cek koneksi
+# Check connection
 try:
     with engine.connect() as connection:
         print("Connected to Supabase!")
@@ -38,6 +36,3 @@ def get_db():
 Base = declarative_base()
 
 from models.UserRole import UserRole
-# from models.User import User
-# from models.Permission import Permission
-# from models.Role import Role

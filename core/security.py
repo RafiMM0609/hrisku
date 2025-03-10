@@ -93,7 +93,6 @@ def get_user_from_jwt_token(db: Session, jwt_token: str) -> Optional[User]:
     except JWTError:
         return None
     except Exception as e:
-        print(e)
         return None
     return user
 

@@ -94,7 +94,6 @@ async def get_user_by_email(
         user = db.execute(query).scalar()
         return user
     except Exception as e:
-        print(e)
         return None
 async def get_user_by_username(
     db: AsyncSession, username: str, exclude_soft_delete: bool = False
@@ -109,7 +108,6 @@ async def get_user_by_username(
         user = db.execute(query).scalar()
         return user
     except Exception as e:
-        print(e)
         return None
     
 async def delete_user_session(db: AsyncSession, user_id: str, token=str) -> str:

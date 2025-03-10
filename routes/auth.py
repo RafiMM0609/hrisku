@@ -159,7 +159,7 @@ async def login(
                     },
                     "token": token
                 },
-                message="Login success"
+                message="Login Success"
             )
         )
     except Exception as e:
@@ -202,7 +202,7 @@ async def me(
                     "image": generate_link_download(user.face_id),
                     "role": {
                         "id": user.roles[0].id if user.roles else None,
-                        "name": user.roles[0].name_role if user.roles else None,
+                        "name": user.roles[0].name if user.roles else None,
                     }
                 }
             )

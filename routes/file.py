@@ -32,7 +32,6 @@ async def upload_file_router(
     token: str = Depends(oauth2_scheme),
 ):
     try:
-        print("here")
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized(message="Invalid/Expired token"))

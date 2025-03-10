@@ -8,6 +8,6 @@ class UserToken(Base):
     __tablename__ = "user_token"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(UUID, nullable=False, index=True)
+    emp_id = Column(String(36), nullable=False, index=True)
     token = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
+    isact = Column(Boolean, default=True)

@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends
-# from app import app
+from fastapi import FastAPI, Request
+import logging
+import time
 # import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,6 +66,17 @@ async def read_root():  # <-- Perbaikan di sini
     except Exception as e:
         return {"error": str(e)}
 
+
+logging.basicConfig(level=logging.INFO)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    logging.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logging.info(f"Response: {response.status_code} in {duration:.2f} seconds")
+    return response
 # @app.on_event("startup")
 # async def startup_event():
 #     app.state.db_client = await get_db()

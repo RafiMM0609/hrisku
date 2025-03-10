@@ -28,7 +28,7 @@ async def list_role(
     db:Session,
     page_size:int,
     page:int,
-    role_id:int,
+    role_id:Optional[int] = None,
 ):
     try:
         limit = page_size
@@ -39,6 +39,9 @@ async def list_role(
         query_count = (select(func.count(Role.id)).filter(Role.isact==True)
         )
 
+        if role_id:
+            query = query.filter(Role.id==role_id)
+            query_count = query_count.filter(Role.id==role_id)
         #Order and Pagination
         query = (
             query.order_by(Role.created_at.desc())
@@ -53,7 +56,6 @@ async def list_role(
         raise ValueError(e)
 
 async def formating_role(data):
-    print("ini data hasil query: \n", data)
     data_response = []
     for d in data:
         permissions = []

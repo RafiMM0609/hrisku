@@ -130,7 +130,7 @@ async def create_user_session(db: AsyncSession, user_id: str, token:str) -> str:
     try:
         exist_data = db.execute(
             select(UserToken).filter(
-                UserToken.user_id == user_id,
+                UserToken.emp_id == user_id,
                 UserToken.token == token
             )
         ).scalar()
@@ -144,7 +144,7 @@ async def create_user_session(db: AsyncSession, user_id: str, token:str) -> str:
             db.commit()
         return 'succes'
     except Exception as e:
-        print(f"Error creating user session: {e}")
+        print(f"Error creating user session: \n {e}")
 async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_token:str) -> str:
     try:
         # old_token = db.execute(
@@ -156,12 +156,12 @@ async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_
         # old_token.is_active = False
         exist_data = db.execute(
             select(UserToken).filter(
-                UserToken.user_id == user_id,
+                UserToken.emp_id == user_id,
                 UserToken.token == token
             )
         ).scalar()
         if exist_data is not None:
-            exist_data.is_active = True
+            exist_data.isact = True
             db.add(exist_data)
             db.commit()
         else:

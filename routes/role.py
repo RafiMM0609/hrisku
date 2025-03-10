@@ -38,7 +38,7 @@ from repository import role as RoleRepo
 router = APIRouter(tags=["Role"])
 
 
-@router.post("/list",
+@router.post("/{role_id}",
     responses={
         "200": {"model": ListRoleResponse},
         "400": {"model": BadRequestResponse},
@@ -46,6 +46,7 @@ router = APIRouter(tags=["Role"])
     },
 )
 async def list_role_route(
+    role_id:int,
     page: Optional[int] = 1,
     page_size: Optional[int] = 10,
     db: AsyncSession = Depends(get_db)
@@ -55,6 +56,7 @@ async def list_role_route(
             db=db,
             page_size=page_size,
             page=page,
+            role_id=role_id,
         )
         return common_response(
             Ok(

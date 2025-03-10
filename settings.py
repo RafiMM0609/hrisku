@@ -25,6 +25,9 @@ MINIO_SECURE = str_to_bool(os.environ.get("MINIO_SECURE", "False"))
 MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "ticketing")
 # backend url
 BACKEND_URL = os.environ.get("BACKEND_URL", "")
+
+
+
 ENVIRONTMENT = 'dev'
 SECRET_KEY='Rx5634F0waUoh8ExHsDq6lGHFbT6u2AwxEXz9UqYIRZorsGV2J15p8LUxtOb9Qx1HqZnrtlMplNaFHkkIYJEVBE6eDgIfRiVh9su'
 ALGORITHM='HS256'

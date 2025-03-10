@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from settings import (
     DB_HOST,
     DB_NAME,

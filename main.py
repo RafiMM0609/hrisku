@@ -1,10 +1,7 @@
 from fastapi import FastAPI, Depends
-from app import app
-import uvicorn
+# from app import app
+# import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from models.User import User
-from models import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from settings import (
     ENVIRONTMENT
@@ -62,11 +59,10 @@ app.include_router(RoleRouter, prefix="/role")
 app.include_router(FileRouter, prefix="/file")
 
 @app.get("/")
-async def read_root(db: AsyncSession = Depends(get_db)):  # <-- Perbaikan di sini
+async def read_root():  # <-- Perbaikan di sini
     try:
         return {"message": "Hello welcome to hrisku"}
     except Exception as e:
-        db.rollback()  # <-- Hindari data corrupt jika error terjadi
         return {"error": str(e)}
 
 # @app.on_event("startup")
@@ -77,7 +73,7 @@ async def read_root(db: AsyncSession = Depends(get_db)):  # <-- Perbaikan di sin
 # async def shutdown_event():
 #     await app.state.db_client.close()
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# if __name__ == "__main__":
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 

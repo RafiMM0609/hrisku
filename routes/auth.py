@@ -108,7 +108,7 @@ async def face(
         )
         if not data:
             raise ValueError('Face not verified')
-        return CudResponse("Verified")
+        return CudResponse(message="Verified")
     except Exception as e:
         import traceback
         print("ERROR :",e)
@@ -158,7 +158,8 @@ async def login(
                         "id": user.wilayah.id
                     },
                     "token": token
-                }
+                },
+                message="Login success"
             )
         )
     except Exception as e:
@@ -265,7 +266,8 @@ async def permissions(
                         }
                         for x in user_permissions
                     ]
-                }
+                },
+                message="Success get permisson"
             )
         )
     except Exception as e:

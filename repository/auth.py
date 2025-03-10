@@ -49,7 +49,6 @@ async def face(
     path = await upload_file_to_local(
             upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
         )
-
     loop = asyncio.get_running_loop()
     resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
     resized_img2 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{user.face_id}")

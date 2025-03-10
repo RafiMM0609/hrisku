@@ -12,7 +12,11 @@ class MetaResponse(BaseModel):
     page:int
 
 class CreateSuccessResponse(BaseModel):
-    message:str
+    meta: MetaResponse
+    data: None
+    status: str
+    code: int
+    message: str
 
 class AddUserRequest(BaseModel):
     name: str

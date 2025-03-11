@@ -31,9 +31,15 @@ class Client(Base):
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
     isact = Column(Boolean, default=True)
+    payment_status = Column(Boolean, default=True)
     due_date_payment = Column(Date, nullable=True)
     due_date_employee = Column(Date, nullable=True)
 
+
+    @property
+    def formatted_due_date(self):
+        return self.due_date_payment.strftime('%d-%m-%Y') if self.due_date_payment else None
+    
     # Relation
     user_client = relationship("User", back_populates="client_user")
     outlets = relationship("ClientOutlet", back_populates="client")

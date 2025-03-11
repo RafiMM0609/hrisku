@@ -12,6 +12,7 @@ from routes.auth import router as AuthRouter
 from routes.user_management import router as UserRouter
 from routes.role import router as RoleRouter
 from routes.client import router as ClientRouter
+from routes.clientbilling import router as ClientBillingRouter
 from routes.file import router as FileRouter
 
 # @asynccontextmanager
@@ -59,6 +60,7 @@ app.include_router(AuthRouter, prefix="/auth")
 app.include_router(UserRouter, prefix="/user")
 app.include_router(RoleRouter, prefix="/role")
 app.include_router(ClientRouter, prefix="/client")
+app.include_router(ClientBillingRouter, prefix="/client-billing")
 app.include_router(FileRouter, prefix="/file")
 
 @app.get("/")

@@ -1,3 +1,4 @@
+from typing import Optional
 from email import utils
 from fastapi import APIRouter, Depends, Request, BackgroundTasks, Request, File, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
@@ -30,6 +31,8 @@ from schemas.common import (
 from schemas.user_management import (
     AddUserRequest,
     CreateSuccessResponse,
+    ListUserResponse,
+    EditUserRequest,
 )
 # from core.file import generate_link_download
 from repository import user_management as UserRepo
@@ -37,19 +40,139 @@ from repository import user_management as UserRepo
 router = APIRouter(tags=["User Management"])
 
 
-@router.post("/add-user",
+@router.post("/add",
     responses={
-        "200": {"model": CudResponses},
+        "201": {"model": CudResponses},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
 )
 async def add_user_route(
     payload: AddUserRequest,
-    db: AsyncSession = Depends(get_db)
-):  # <-- Perbaikan di sini
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
     try:
-        user_data = await UserRepo.add_user(db=db, payload=payload)
-        return common_response(CudResponse(message="User added!", data=user_data))
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        valid = await UserRepo.add_user_validator(db, payload)
+        if not valid["success"]:
+            return common_response(BadRequest(message=valid["errors"]))
+        user_data = await UserRepo.add_user(
+            db=db,
+            payload=payload,
+            user=user
+        )
+        return common_response(CudResponse(
+            message="User added!", 
+            data={
+            "name": user_data.name,
+            "role": user_data.roles[0].name,
+            },
+            meta=[]
+        ))
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.post("/list",
+    responses={
+        "200": {"model": ListUserResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_user_route(
+    page:Optional[int]=1,
+    page_size:Optional[int]=10,
+    src:Optional[str]=None,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        user_data, num_data, num_page = await UserRepo.list_user(
+            db=db,
+            page=page,
+            page_size=page_size,
+            src=src,
+        )
+        return common_response(Ok(
+            data=user_data,
+            meta={
+                "count": num_data,
+                "page_count": num_page,
+                "page_size": page_size,
+                "page": page,
+            },
+            message="Success get data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.post("/delete/{id}",
+    responses={
+        "201": {"model": CreateSuccessResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def delete_route(
+    id:str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data = await UserRepo.delete_user(
+            db=db,
+            id=id,
+            user=user,
+        )
+        return common_response(Ok(
+            message="Success delete data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+@router.post("/update/{id}",
+    responses={
+        "201": {"model": CreateSuccessResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def update_route(
+    id:str,
+    payload:EditUserRequest,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        valid = await UserRepo.edit_user_validator(
+            db=db, 
+            payload=payload, 
+            id=id
+        )
+        if not valid["success"]:
+            return common_response(BadRequest(message=valid["errors"]))
+        data = await UserRepo.edit_user(
+            db=db,
+            id=id,
+            payload=payload,
+            user=user,
+        )
+        return common_response(Ok(
+            message="Success edit data"
+            )
+        )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))

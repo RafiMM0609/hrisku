@@ -89,10 +89,13 @@ async def get_user_by_email(
             # query = select(User).filter(func.lower(User.email) == email.lower(), User.deleted_at == None)
         else:
             # why there is delete_at and is_active
-            query = select(User).filter(func.lower(User.email) == email.lower(), User.isact == True)
+            # query = select(User).filter(func.lower(User.email) == email.lower())
+            query = select(User).filter(User.email == email)
         user = db.execute(query).scalar()
+        print("user : \n", user)
         return user
     except Exception as e:
+        print("Error login : ",e)
         return None
 async def get_user_by_username(
     db: AsyncSession, username: str, exclude_soft_delete: bool = False
@@ -138,7 +141,7 @@ async def create_user_session(db: AsyncSession, user_id: str, token:str) -> str:
             db.add(exist_data)
             db.commit()
         else:
-            user_token = UserToken(user_id=user_id, token=token)
+            user_token = UserToken(emp_id=user_id, token=token)
             db.add(user_token)
             db.commit()
         return 'succes'
@@ -173,6 +176,7 @@ async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_
 
 async def check_user_password(db: AsyncSession, email: str, password: str) -> Optional[User]:
     user = await get_user_by_email(db, email=email)
+    print(user.name)
     if user == None:
         return False
     if validated_user_password(user.password, password):

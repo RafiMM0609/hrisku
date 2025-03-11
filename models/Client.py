@@ -31,9 +31,12 @@ class Client(Base):
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
     isact = Column(Boolean, default=True)
-    due_date_payment = Column(Date, default=True)
-    due_date_employee = Column(Date, default=True)
+    due_date_payment = Column(Date, nullable=True)
+    due_date_employee = Column(Date, nullable=True)
 
     # Relation
     user_client = relationship("User", back_populates="client_user")
+    outlets = relationship("ClientOutlet", back_populates="client")
+    bpjs = relationship("Bpjs", back_populates="client")
+    allowances = relationship("Allowances", back_populates="client")
 

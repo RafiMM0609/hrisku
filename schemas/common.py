@@ -62,9 +62,9 @@ class NotImplementedResponse(BaseModel):
     code: int
     message: str = "Not Yet implemented"
 
-# class CudResponses(BaseModel):
+# class CudResponschema(BaseModel):
 #     message:str
-class CudResponses(BaseModel):
+class CudResponschema(BaseModel):
     meta: MetaResponse
     data: None
     status: str

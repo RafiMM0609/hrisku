@@ -1,16 +1,28 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel,condecimal
+from pydantic import BaseModel
 
 class Organization(BaseModel):
     id:int
     name:str
+
+class Outlet(BaseModel):
+    name:str
+    latitude:float
+    longitude:float
+    address:str
+
+class MetaResponse(BaseModel):
+    count:int
+    page_count:int
+    page_size:int
+    page:int
 
 class CreateSuccessResponse(BaseModel):
     message:str
 
 class AddBpjsRequest(BaseModel):
     name: str
-    fee: int
+    amount: float
 class AddAllowencesRequest(BaseModel):
     name: str
     amount: int
@@ -18,22 +30,28 @@ class AddAllowencesRequest(BaseModel):
 class AddClientRequest(BaseModel):
     name: str
     address: str
-    outlet: List[int]
+    outlet: List[Outlet]
     basic_salary: str
-    agency_fee: condecimal(max_digits=10, decimal_places=2)
-    payment_date: date
+    agency_fee: float
+    payment_date: str
     bpjs: List[AddBpjsRequest]
     allowences: List[AddAllowencesRequest]
+    cs_person: Optional[str] = None
+    cs_number: Optional[str] = None
+    cs_email: Optional[str] = None
 
 class EditClientRequest(BaseModel):
     name: str
     address: str
-    outlet: List[int]
+    outlet: List[Outlet]
     basic_salary: str
     agency_fee: str
-    payment_date: date
+    payment_date: str
     bpjs: List[AddBpjsRequest]
     allowences: List[AddAllowencesRequest]
+    cs_person: Optional[str] = None
+    cs_number: Optional[str] = None
+    cs_email: Optional[str] = None
 
 class ListAllClient(BaseModel):
     id: int
@@ -44,10 +62,10 @@ class ListAllClient(BaseModel):
 
 
 class ListClientResponse(BaseModel):
-    meta: any,
-    data: ListAllClient,
-    status: str,
-    code: int,
+    meta: MetaResponse
+    data: ListAllClient
+    status: str
+    code: int
     message: str
 
 class ListAllClientBilling(BaseModel):
@@ -58,10 +76,10 @@ class ListAllClientBilling(BaseModel):
     status: Organization
 
 class ListClientBillingResponse(BaseModel):
-    meta: any,
-    data: ListAllClientBilling,
-    status: str,
-    code: int,
+    meta: MetaResponse
+    data: ListAllClientBilling
+    status: str
+    code: int
     message: str
 
 class ListDetailClientBilling(BaseModel):
@@ -70,8 +88,8 @@ class ListDetailClientBilling(BaseModel):
     billing: str
 
 class ListClientBillingResponse(BaseModel):
-    meta: any,
-    data: ListDetailClientBilling,
-    status: str,
-    code: int,
+    meta: MetaResponse
+    data: ListDetailClientBilling
+    status: str
+    code: int
     message: str

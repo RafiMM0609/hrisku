@@ -28,7 +28,7 @@ from schemas.common import (
     BadRequestResponse,
     UnauthorizedResponse,
     InternalServerErrorResponse,
-    CudResponses,
+    CudResponschema,
 )
 from schemas.auth import (
     LoginSuccessResponse,
@@ -46,7 +46,7 @@ router = APIRouter(tags=["Auth"])
 
 @router.post("/create-user",
     responses={
-        "200": {"model": CudResponses},
+        "200": {"model": CudResponschema},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },

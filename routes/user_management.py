@@ -26,7 +26,7 @@ from schemas.common import (
     BadRequestResponse,
     UnauthorizedResponse,
     InternalServerErrorResponse,
-    CudResponses,
+    CudResponschema,
 )
 from schemas.user_management import (
     AddUserRequest,
@@ -42,7 +42,7 @@ router = APIRouter(tags=["User Management"])
 
 @router.post("/add",
     responses={
-        "201": {"model": CudResponses},
+        "201": {"model": CudResponschema},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
@@ -57,7 +57,6 @@ async def add_user_route(
         if not user:
             return common_response(Unauthorized())
         valid = await UserRepo.add_user_validator(db, payload)
-        print("valid \n" ,valid)
         if not valid["success"]:
             return common_response(BadRequest(message=valid["errors"]))
         user_data = await UserRepo.add_user(
@@ -76,7 +75,7 @@ async def add_user_route(
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
     
-@router.post("/list",
+@router.get("/list",
     responses={
         "200": {"model": ListUserResponse},
         "400": {"model": BadRequestResponse},

@@ -26,7 +26,7 @@ from schemas.common import (
     BadRequestResponse,
     UnauthorizedResponse,
     InternalServerErrorResponse,
-    CudResponses,
+    CudResponschema,
 )
 from schemas.role import (
     ListRoleResponse,
@@ -38,7 +38,7 @@ from repository import role as RoleRepo
 router = APIRouter(tags=["Role"])
 
 
-@router.post("/{role_id}",
+@router.get("/{role_id}",
     responses={
         "200": {"model": ListRoleResponse},
         "400": {"model": BadRequestResponse},

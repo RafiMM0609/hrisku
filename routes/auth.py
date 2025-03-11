@@ -129,12 +129,12 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        is_valid = await authRepo.check_user_password(db, request.email, request.password)
+        is_valid, status = await authRepo.check_user_password(db, request.email, request.password)
         if not is_valid:
             return common_response(BadRequest(message="Invalid Credentials"))
 
         # ========= BEGIN PENGECEKAN STATUS USER
-        if is_valid and is_valid.is_active != True:
+        if is_valid and is_valid.isact != True:
             return common_response(BadRequest(message="Pengguna Tidak Aktif"))
         # ========= END PENGECEKAN STATUS USER
 
@@ -147,17 +147,14 @@ async def login(
                 data={
                     "id": str(user.id),
                     "email": user.email,
-                    "username": user.username,
-                    "is_active": user.is_active,
+                    "name": user.name,
+                    "isact": user.isact,
                     "role": None if not user.roles else{
-                        "nama": user.roles[0].name_role,
+                        "nama": user.roles[0].name,
                         "id": user.roles[0].id
                     },
-                    "wilayah": None if user.wilayah is None else{
-                        "nama": user.wilayah.name_wilayah,
-                        "id": user.wilayah.id
-                    },
-                    "token": token
+                    "token": token,
+                    "change_password": not status
                 },
                 message="Login Success"
             )
@@ -219,7 +216,7 @@ async def generate_token(
     db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ):
     try:
-        is_valid = await authRepo.check_user_password(
+        is_valid, status = await authRepo.check_user_password(
             db, form_data.username, form_data.password
         )
         if not is_valid:

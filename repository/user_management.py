@@ -42,13 +42,13 @@ async def add_user(
         if not role:
             raise ValueError("Role not found")
         password = secrets.token_urlsafe(16)
-        hashed_password = generate_hash_password(password)
+        # hashed_password = generate_hash_password(password)
         new_user = User(
             email=payload.email,
             name=payload.name,
             phone=payload.phone,
             address=payload.address,
-            first_login=hashed_password,
+            first_login=password,
             created_by=user.id,
             photo=payload.photo,
         )
@@ -76,7 +76,7 @@ async def add_user_validator(db: Session, payload: AddUserRequest):
             if payload.role_id and not result[0][0]:  # Cek role_id
                 errors = "Role not found"
 
-            if payload.email and result[-1][0]:  # Cek email
+            if payload.email and result[0][1]:  # Cek email
                 errors = "Email already exists"
         if errors:
             return {"success": False, "errors": errors}
@@ -114,7 +114,6 @@ async def edit_user_validator(
 
     except Exception as e:
         print(f"Validation error: {e}")
-
 async def edit_user(
     db: Session,
     payload: EditUserRequest,

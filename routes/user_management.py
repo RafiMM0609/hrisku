@@ -57,6 +57,7 @@ async def add_user_route(
         if not user:
             return common_response(Unauthorized())
         valid = await UserRepo.add_user_validator(db, payload)
+        print("valid \n" ,valid)
         if not valid["success"]:
             return common_response(BadRequest(message=valid["errors"]))
         user_data = await UserRepo.add_user(

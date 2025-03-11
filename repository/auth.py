@@ -92,11 +92,12 @@ async def get_user_by_email(
             # query = select(User).filter(func.lower(User.email) == email.lower())
             query = select(User).filter(User.email == email)
         user = db.execute(query).scalar()
-        print("user : \n", user)
-        return user
+        if user.password == None:
+            return user, True
+        return user, False
     except Exception as e:
         print("Error login : ",e)
-        return None
+        return None, False
 async def get_user_by_username(
     db: AsyncSession, username: str, exclude_soft_delete: bool = False
 ) -> Optional[User]:
@@ -175,13 +176,17 @@ async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_
         print(f"Error creating user session: {e}")
 
 async def check_user_password(db: AsyncSession, email: str, password: str) -> Optional[User]:
-    user = await get_user_by_email(db, email=email)
-    print(user.name)
+    user, status = await get_user_by_email(db, email=email)
     if user == None:
-        return False
-    if validated_user_password(user.password, password):
-        return user
-    return False
+        return False, False
+    if status:
+        if user.first_login == password:
+            return user, False
+    else:
+        if validated_user_password(user.password, password):
+            print("here")
+            return user, True
+    return False, False
 
 async def change_user_password(db: AsyncSession, user: User, new_password: str) -> None:
     user.password = generate_hash_password(password=new_password)

@@ -31,7 +31,7 @@ class AddClientRequest(BaseModel):
     name: str
     address: str
     outlet: List[Outlet]
-    basic_salary: str
+    basic_salary: float
     agency_fee: float
     payment_date: str
     bpjs: List[AddBpjsRequest]

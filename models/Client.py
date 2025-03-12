@@ -27,6 +27,7 @@ class Client(Base):
     address = Column(String, nullable=True)
     website = Column(String, nullable=True)
     fee_agency = Column(Float, nullable=True)
+    basic_salary = Column(Float, nullable=True)
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)
     created_at = Column(DateTime(timezone=True))

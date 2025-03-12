@@ -1,10 +1,9 @@
 from typing import Optional, List
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
 from core.security import validated_user_password, generate_hash_password, get_user_permissions
 from core.utils import generate_token
-from core.file import upload_file_to_local, delete_file_in_local
+from core.file import upload_file_to_local, delete_file_in_local, upload_file
 from core.mail import send_reset_password_email
 from models.User import User
 from models.ForgotPassword import ForgotPassword
@@ -18,8 +17,12 @@ from fastapi import UploadFile
 from schemas.auth import (
     MenuDict
 )
-import os
+import numpy as np
+from PIL import Image
+import io
 import asyncio
+import os
+import requests
 os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
 import cv2
@@ -39,7 +42,8 @@ backends = [
 ]
 
 alignment_modes = [True, False]
-def resize_image(image_path, size=(224, 224)):
+async def resize_image(image_path, size=(224, 224)):
+    print("ini image_path : \n",image_path)
     img = cv2.imread(image_path)
     resized_img = cv2.resize(img, size)
     return resized_img
@@ -119,30 +123,35 @@ async def first_login(
         print(f"Error first login: {e}")
         raise ValueError("Error first login")
 async def regis_face(
-    upload_file:UploadFile,
+    upload_file_request:UploadFile,
     user: User,
     db: Session,
 ):
     try:
         from deepface import DeepFace
-        file_extension = os.path.splitext(upload_file.filename)[1]
-        now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        path = await upload_file_to_local(
-                upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
-            )
+        # Membaca gambar langsung dari request tanpa menyimpannya
+        image_bytes = await upload_file_request.read()
+        
+        # Mengubah gambar menjadi format NumPy agar bisa digunakan oleh DeepFace
+        image = Image.open(io.BytesIO(image_bytes))  # Menggunakan PIL untuk membuka gambar
+        image_np = np.array(image)  # Konversi ke array NumPy
+        
+        # Jika gambar memiliki alpha channel (RGBA), konversi ke RGB
+        if image_np.shape[-1] == 4:
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
+
+        # Face detection dengan DeepFace
         loop = asyncio.get_running_loop()
-        resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
-                                                
-        # face detection
-        objs = DeepFace.analyze(
-            img_path = resized_img1, 
-            actions = ['age', 'gender', 'race', 'emotion'],
-        )
-        delete_file_in_local(folder=LOCAL_PATH, path=path)
+        objs = await loop.run_in_executor(None, DeepFace.analyze, image_np, ['age'])
+
         print(objs)
-        path = await upload_file(
-            upload_file=upload_file, path=f"/face/face-{user.name}{now.replace(' ','_')}{file_extension}"
-        )
+
+        # Setelah validasi, unggah gambar ke MinIO atau local storage
+        now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        file_extension = os.path.splitext(upload_file_request.filename)[1]
+        path = await upload_file(upload_file_request, f"/face/face-{now.replace(' ', '_')}{file_extension}")
+
+        # return {"face_data": objs, "face_path": path}
         user.face_id = path
         db.add(user)
         db.commit()
@@ -150,22 +159,78 @@ async def regis_face(
     except Exception as e:
         print(f"Error regis face: {e}")
         raise ValueError("Error regis face")
+# async def regis_face(
+#     upload_file:UploadFile,
+#     user: User,
+#     db: Session,
+# ):
+#     try:
+#         from deepface import DeepFace
+#         file_extension = os.path.splitext(upload_file.filename)[1]
+#         now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+#         path = await upload_file_to_local(
+#                 upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
+#             )
+#         loop = asyncio.get_running_loop()
+#         resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
+                                                
+#         # face detection
+#         objs = DeepFace.analyze(
+#             img_path = resized_img1, 
+#             actions = ['age', 'gender', 'race', 'emotion'],
+#         )
+#         delete_file_in_local(folder=LOCAL_PATH, path=path)
+#         print(objs)
+#         path = await upload_file(
+#             upload_file=upload_file, path=f"/face/face-{user.name}{now.replace(' ','_')}{file_extension}"
+#         )
+#         user.face_id = path
+#         db.add(user)
+#         db.commit()
+#         return "Oke"
+#     except Exception as e:
+#         print(f"Error regis face: {e}")
+#         raise ValueError("Error regis face")
+async def get_numpy_from_minio(file_path):
+    MINIO_URL = "http://localhost:9000"
+    response = requests.get(f"{MINIO_URL}/{file_path}")
+    if response.status_code == 200:
+        image = Image.open(io.BytesIO(response.content))  # Konversi ke PIL
+        image_np = np.array(image)  # Konversi ke NumPy
+        
+        # Jika ada alpha channel, konversi ke RGB
+        if image_np.shape[-1] == 4:
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
+        
+        return image_np
+    else:
+        raise ValueError("Failed to download image from MinIO")
+async def get_numpy_from_upload(upload_file):
+    image_bytes = await upload_file.read()  # Baca gambar sebagai bytes
+    image = Image.open(io.BytesIO(image_bytes))  # Konversi ke PIL Image
+    image_np = np.array(image)  # Konversi ke NumPy array
+    
+    # Jika gambar memiliki alpha channel (RGBA), ubah ke RGB
+    if image_np.shape[-1] == 4:
+        image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
+    
+    return image_np
 async def face(
     upload_file:UploadFile,
     user: User,
     db: Session,
 ):
     from deepface import DeepFace
-    file_extension = os.path.splitext(upload_file.filename)[1]
-    now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-    path = await upload_file_to_local(
-            upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
-        )
-    loop = asyncio.get_running_loop()
-    resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
-    resized_img2 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{user.face_id}")
+    # file_extension = os.path.splitext(upload_file.filename)[1]
+    # now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+    # path = await upload_file_to_local(
+    #         upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
+    #     )
+    resized_img1 = await get_numpy_from_upload(upload_file)
+    # resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
+    # resized_img2 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{user.face_id}")
     # resized_img1 = resize_image(f"{LOCAL_PATH}{path}")
-    # resized_img2 = resize_image(f"{LOCAL_PATH}{user.face_id}")
+    resized_img2 = await resize_image(f"{LOCAL_PATH}{user.face_id}")
                                             
     #face verification
     obj = DeepFace.verify(
@@ -174,12 +239,12 @@ async def face(
     detector_backend = backends[0],
     align = alignment_modes[0],
     )
-    delete_file_in_local(folder=LOCAL_PATH, path=path)
+    # delete_file_in_local(folder=LOCAL_PATH, path=path)
     return obj['verified']
 
 
 async def check_user_status_by_email(
-    db: AsyncSession,
+    db: Session,
     email: str
 ) -> Optional[User]:
 
@@ -193,7 +258,7 @@ async def check_user_status_by_email(
 
 
 async def get_user_by_email(
-    db: AsyncSession, email: str, exclude_soft_delete: bool = False
+    db: Session, email: str, exclude_soft_delete: bool = False
 ) -> Optional[User]:
     try:
         if exclude_soft_delete == True:
@@ -211,7 +276,7 @@ async def get_user_by_email(
         print("Error login : ",e)
         return None, False
 async def get_user_by_username(
-    db: AsyncSession, username: str, exclude_soft_delete: bool = False
+    db: Session, username: str, exclude_soft_delete: bool = False
 ) -> Optional[User]:
     try:
         if exclude_soft_delete == True:
@@ -225,7 +290,7 @@ async def get_user_by_username(
     except Exception as e:
         return None
     
-async def delete_user_session(db: AsyncSession, user_id: str, token=str) -> str:
+async def delete_user_session(db: Session, user_id: str, token=str) -> str:
     try:    
         user_token = db.execute(
             select(UserToken).filter(
@@ -241,7 +306,7 @@ async def delete_user_session(db: AsyncSession, user_id: str, token=str) -> str:
         print(f"Error delete user session: {e}")
         raise ValueError(e)
     
-async def create_user_session(db: AsyncSession, user_id: str, token:str) -> str:
+async def create_user_session(db: Session, user_id: str, token:str) -> str:
     try:
         exist_data = db.execute(
             select(UserToken).filter(
@@ -260,7 +325,7 @@ async def create_user_session(db: AsyncSession, user_id: str, token:str) -> str:
         return 'succes'
     except Exception as e:
         print(f"Error creating user session: \n {e}")
-async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_token:str) -> str:
+async def create_user_session_me(db: Session, user_id: str, token:str, old_token:str) -> str:
     try:
         # old_token = db.execute(
         #     select(UserToken).filter(
@@ -287,7 +352,7 @@ async def create_user_session_me(db: AsyncSession, user_id: str, token:str, old_
     except Exception as e:
         print(f"Error creating user session: {e}")
 
-async def check_user_password(db: AsyncSession, email: str, password: str) -> Optional[User]:
+async def check_user_password(db: Session, email: str, password: str) -> Optional[User]:
     user, status = await get_user_by_email(db, email=email)
     if user == None:
         return False, False
@@ -299,13 +364,13 @@ async def check_user_password(db: AsyncSession, email: str, password: str) -> Op
             return user, True
     return False, False
 
-async def change_user_password(db: AsyncSession, user: User, new_password: str) -> None:
+async def change_user_password(db: Session, user: User, new_password: str) -> None:
     user.password = generate_hash_password(password=new_password)
     db.add(user)
     db.commit()
 
 
-async def generate_token_forgot_password(db: AsyncSession, user: User) -> str:
+async def generate_token_forgot_password(db: Session, user: User) -> str:
     """
     generate token -> save user and token to database -> return generated token
     """
@@ -323,7 +388,7 @@ async def send_email_forgot_password(user: User, token: str) -> None:
 
 
 async def change_user_password_by_token(
-    db: AsyncSession, token: str, new_password: str
+    db: Session, token: str, new_password: str
 ) -> Optional[User]:
     query = select(ForgotPassword).where(ForgotPassword.token == token)
     forgot_password = db.execute(query).scalar()
@@ -341,7 +406,7 @@ async def change_user_password_by_token(
     return user
 
 
-async def check_status_user(db: AsyncSession, email: str) -> bool:
+async def check_status_user(db: Session, email: str) -> bool:
     user = await check_user_status_by_email(db, email=email)
     if user == None:
         return False
@@ -349,7 +414,7 @@ async def check_status_user(db: AsyncSession, email: str) -> bool:
     return True
 
 async def update_profile(
-    db: AsyncSession, 
+    db: Session, 
     user_id: str, 
     name: str, 
     email: str, 

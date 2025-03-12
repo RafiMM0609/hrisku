@@ -39,6 +39,7 @@ async def add_client(
             cs_person=payload.cs_person,
             cs_number=payload.cs_number,
             cs_email=payload.cs_email,
+            basic_salary=payload.basic_salary,
         )
         db.add(new_client)
         db.commit()

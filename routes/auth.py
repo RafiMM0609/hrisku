@@ -123,7 +123,7 @@ async def regis_face_route(
         data = await authRepo.regis_face(
             db=db,
             user=user,
-            upload_file=file,
+            upload_file_request=file,
         )
         if not data:
             raise ValueError('Your picture are not valid')

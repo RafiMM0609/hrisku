@@ -5,7 +5,7 @@ from sqlalchemy import (
     DateTime, 
     ForeignKey, 
     Boolean, 
-    DECIMAL, 
+    Float, 
     Date
 )
 from sqlalchemy.orm import relationship
@@ -26,7 +26,7 @@ class Client(Base):
     cs_email = Column(String, nullable=True)
     address = Column(String, nullable=True)
     website = Column(String, nullable=True)
-    fee_agency = Column(DECIMAL(5, 2), nullable=True)
+    fee_agency = Column(Float, nullable=True)
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)
     created_at = Column(DateTime(timezone=True))

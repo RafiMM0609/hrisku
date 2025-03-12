@@ -25,7 +25,7 @@ class AddBpjsRequest(BaseModel):
     amount: float
 class AddAllowencesRequest(BaseModel):
     name: str
-    amount: int
+    amount: float
 
 class AddClientRequest(BaseModel):
     name: str

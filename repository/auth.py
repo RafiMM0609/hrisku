@@ -1,18 +1,23 @@
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.security import validated_user_password, generate_hash_password
+from core.security import validated_user_password, generate_hash_password, get_user_permissions
 from core.utils import generate_token
 from core.file import upload_file_to_local, delete_file_in_local
 from core.mail import send_reset_password_email
 from models.User import User
 from models.ForgotPassword import ForgotPassword
 from models.UserToken import UserToken
+from models.Menu import Menu
+from models.Permission import Permission
 from datetime import datetime, timedelta
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
 from fastapi import UploadFile
+from schemas.auth import (
+    MenuDict
+)
 import os
 import asyncio
 os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
@@ -38,6 +43,67 @@ def resize_image(image_path, size=(224, 224)):
     img = cv2.imread(image_path)
     resized_img = cv2.resize(img, size)
     return resized_img
+def expand_menu_tree_with_permissions(
+    db: Session, root_menu: List[Menu], permissions: List[Permission]
+) -> List[MenuDict]:
+    if len(root_menu) == 0:
+        return []
+    else:
+        return [
+            {
+                "id": y.id,
+                "url": y.url,
+                "name": y.name,
+                "icon": y.icon,
+                "is_has_child": y.is_has_child,
+                "isact": y.isact,
+                "is_show": y.is_show,
+                "order": y.order_id if y.order_id != None else 0,
+                "sub_menu": expand_menu_tree_with_permissions(
+                    db=db, root_menu=y.child, permissions=permissions
+                ),
+            }
+            for y in sorted(root_menu, key=lambda d: d.id)
+            if y.isact == True
+            and (
+                y.permission_id in [x.id for x in permissions]
+                # or y.permission_id == None
+            )
+        ]
+def sort_menu_tree_by_order(trees: List[MenuDict]) -> List[MenuDict]:
+    return [
+        {
+            "id": y["id"],
+            "title": y["name"],
+            "path": y["url"],
+            "icon": y["icon"],
+            "is_show": y["is_show"],
+            # "is_has_child": y["is_has_child"],
+            # "is_active": y["is_active"],
+            # "order": y["order"],
+            "sub": sort_menu_tree_by_order(y["sub_menu"]) if len(y["sub_menu"]) > 0 else False,
+        }
+        for y in sorted(trees, key=lambda d: d["order"])
+    ]
+def prune_menu_tree(trees: List[MenuDict]) -> List[MenuDict]:
+    pruned_tree = []
+    for tree in trees:
+        if tree["is_has_child"] and len(tree["sub_menu"]) == 0:
+            continue
+        elif tree["is_has_child"] and len(tree["sub_menu"]) > 0:
+            tree["sub_menu"] = prune_menu_tree(tree["sub_menu"])
+        pruned_tree.append(tree)
+    return pruned_tree
+def generate_menu_tree_for_user(db: Session, user: User) -> List[MenuDict]:
+    permissions = get_user_permissions(db=db, user=user)
+    query = select(Menu).where(Menu.parent_id == None).order_by(Menu.id.asc())
+    root_menu: List[Menu] = db.execute(query).scalars().all()
+    menu_tree = expand_menu_tree_with_permissions(
+        db=db, root_menu=root_menu, permissions=permissions
+    )
+    menu_tree = prune_menu_tree(menu_tree)
+    menu_tree = sort_menu_tree_by_order(menu_tree)
+    return menu_tree
 async def first_login(
     db:Session,
     user: User,
@@ -230,7 +296,6 @@ async def check_user_password(db: AsyncSession, email: str, password: str) -> Op
             return user, False
     else:
         if validated_user_password(user.password, password):
-            print("here")
             return user, True
     return False, False
 

@@ -38,7 +38,7 @@ class ListDetailBilling(BaseModel):
     id: int
     client_id: int
     date: str
-    amount: int
+    amount: float
     total_talent: int
 
 class ListDetailBillingResponse(BaseModel):

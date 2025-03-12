@@ -38,6 +38,7 @@ from schemas.auth import (
     MeSuccessResponse,
     RegisRequest,
     FirstLoginUserRequest,
+    MenuResponse,
 )
 # from core.file import generate_link_download
 from repository import auth as authRepo
@@ -60,6 +61,8 @@ async def first_login_user(
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized(message="Invalid/Expired token"))
+        if user.email != payload.email:
+            return common_response(BadRequest(message="Invalid email"))
         data = await authRepo.first_login(
             db=db,
             user=user,
@@ -131,7 +134,7 @@ async def regis_face_route(
 @router.post(
     "/login",
     responses={
-        "200": {"model": LoginSuccessResponse},
+        "201": {"model": LoginSuccessResponse},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
@@ -156,7 +159,7 @@ async def login(
         await authRepo.create_user_session(db=db, user_id=user.id, token=token)
 
         return common_response(
-            Ok(
+            CudResponse(
                 data={
                     "id": str(user.id),
                     "email": user.email,
@@ -282,4 +285,27 @@ async def permissions(
             )
         )
     except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get(
+    "/menu",
+    responses={
+        "200": {"model": MenuResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def menu(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+
+        list_menu = authRepo.generate_menu_tree_for_user(db=db, user=user)
+
+        return common_response(Ok(data={"results": list_menu}))
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
         return common_response(BadRequest(message=str(e)))

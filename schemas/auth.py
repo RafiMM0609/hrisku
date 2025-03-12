@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, TypedDict
 from pydantic import BaseModel
 
 
@@ -8,7 +8,15 @@ class CreateUserRequest(BaseModel):
     phone: str
     face_id: Optional[str]
     # password: Optional[str]
-
+class MenuDict(TypedDict):
+    id: int
+    url: str
+    menu_name: str
+    icon: str
+    is_has_child: bool
+    is_active: bool
+    order: int
+    sub_menu: List[dict]  # MenuDict
 class FirstLoginUserRequest(BaseModel):
     email: str
     password: str

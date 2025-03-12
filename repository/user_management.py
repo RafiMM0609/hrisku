@@ -166,70 +166,20 @@ async def delete_user(
         return user_exist
     except Exception as e:
         raise ValueError(e)
-async def list_user(
-    db: Session,
-    page: int,
-    page_size: int,
-    src: Optional[str] = None
-):
-    try:        
-        limit = page_size
-        offset = (page - 1) * limit
-
-        query = (select(User).filter(User.isact==True)
-        )
-        query_count = (select(func.count(User.id)).filter(User.isact==True)
-        )
-
-        if src:
-            query = (query
-                     .filter(User.name.ilike(f"%{src}%"))
-                     .filter(User.email.ilike(f"%{src}%"))
-                     )
-            query_count = (query_count
-                     .filter(User.name.ilike(f"%{src}%"))
-                     .filter(User.email.ilike(f"%{src}%"))
-                     )
-
-        query = (
-            query.order_by(User.created_at.desc())
-            .limit(limit=limit)
-            .offset(offset=offset)
-        )
-
-        data = db.execute(query).scalars().all()
-        num_data = db.execute(query_count).scalar()
-        num_page = ceil(num_data / limit)
-        return (await formating_user(data), num_data, num_page)
-    except Exception as e:
-        raise ValueError(e)
 # async def list_user(
 #     db: Session,
 #     page: int,
 #     page_size: int,
 #     src: Optional[str] = None
 # ):
-#     try:
+#     try:        
 #         limit = page_size
 #         offset = (page - 1) * limit
 
-#         # Alias untuk relationship
-#         ClientAlias = aliased(Client)
-#         RoleAlias = aliased(Role)
-
-#         query = (select(
-#             User.id,
-#             User.name,
-#             User.email,
-#             User.phone,
-#             User.address,
-#             User.isact,
-#             User.client_user,
+#         query = (select(User).filter(User.isact==True)
 #         )
-#         .filter(User.isact == True)
+#         query_count = (select(func.count(User.id)).filter(User.isact==True)
 #         )
-
-#         query_count = select(func.count(User.id)).filter(User.isact == True)
 
 #         if src:
 #             query = (query
@@ -243,20 +193,67 @@ async def list_user(
 
 #         query = (
 #             query.order_by(User.created_at.desc())
-#             .limit(limit)
-#             .offset(offset)
+#             .limit(limit=limit)
+#             .offset(offset=offset)
 #         )
 
-#         data = db.execute(query).all()
-#         print("ini data : \n",data)
+#         data = db.execute(query).scalars().all()
 #         num_data = db.execute(query_count).scalar()
 #         num_page = ceil(num_data / limit)
-
-#         # Format hasilnya
 #         return (await formating_user(data), num_data, num_page)
-
 #     except Exception as e:
 #         raise ValueError(e)
+async def list_user(
+    db: Session,
+    page: int,
+    page_size: int,
+    src: Optional[str] = None
+):
+    try:
+        limit = page_size
+        offset = (page - 1) * limit
+
+        # Gunakan alias untuk tabel Client agar lebih fleksibel
+        ClientAlias = aliased(Client)
+
+        # Query utama dengan JOIN ke Client
+        query = (select(User)
+                 .join(ClientAlias, ClientAlias.id == User.client_id)
+                 .filter(User.isact == True))
+
+        # Query count untuk paginasi
+        query_count = (select(func.count(User.id))
+                       .join(ClientAlias, ClientAlias.id == User.client_id)
+                       .filter(User.isact == True))
+
+        # Jika ada pencarian (src), cari di nama user & nama client
+        if src:
+            query = (query.filter(
+                (User.name.ilike(f"%{src}%")) |
+                (User.email.ilike(f"%{src}%")) |
+                (ClientAlias.name.ilike(f"%{src}%"))
+            ))
+
+            query_count = (query_count.filter(
+                (User.name.ilike(f"%{src}%")) |
+                (User.email.ilike(f"%{src}%")) |
+                (ClientAlias.name.ilike(f"%{src}%"))
+            ))
+
+        # Tambahkan order, limit, dan offset
+        query = (query.order_by(User.created_at.desc())
+                 .limit(limit)
+                 .offset(offset))
+
+        # Eksekusi query
+        data = db.execute(query).scalars().all()
+        num_data = db.execute(query_count).scalar()
+        num_page = ceil(num_data / limit)
+
+        return (await formating_user(data), num_data, num_page)
+
+    except Exception as e:
+        raise ValueError(e)
     
 async def formating_user(data):
     ls_data = []

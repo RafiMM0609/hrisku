@@ -2,11 +2,12 @@ from typing import Optional
 import secrets
 from math import ceil
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local
 from models.User import User
 from models.Role import Role
+from models.Client import Client
 from datetime import datetime, timedelta
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
@@ -202,6 +203,60 @@ async def list_user(
         return (await formating_user(data), num_data, num_page)
     except Exception as e:
         raise ValueError(e)
+# async def list_user(
+#     db: Session,
+#     page: int,
+#     page_size: int,
+#     src: Optional[str] = None
+# ):
+#     try:
+#         limit = page_size
+#         offset = (page - 1) * limit
+
+#         # Alias untuk relationship
+#         ClientAlias = aliased(Client)
+#         RoleAlias = aliased(Role)
+
+#         query = (select(
+#             User.id,
+#             User.name,
+#             User.email,
+#             User.phone,
+#             User.address,
+#             User.isact,
+#             User.client_user,
+#         )
+#         .filter(User.isact == True)
+#         )
+
+#         query_count = select(func.count(User.id)).filter(User.isact == True)
+
+#         if src:
+#             query = (query
+#                      .filter(User.name.ilike(f"%{src}%"))
+#                      .filter(User.email.ilike(f"%{src}%"))
+#                      )
+#             query_count = (query_count
+#                      .filter(User.name.ilike(f"%{src}%"))
+#                      .filter(User.email.ilike(f"%{src}%"))
+#                      )
+
+#         query = (
+#             query.order_by(User.created_at.desc())
+#             .limit(limit)
+#             .offset(offset)
+#         )
+
+#         data = db.execute(query).all()
+#         print("ini data : \n",data)
+#         num_data = db.execute(query_count).scalar()
+#         num_page = ceil(num_data / limit)
+
+#         # Format hasilnya
+#         return (await formating_user(data), num_data, num_page)
+
+#     except Exception as e:
+#         raise ValueError(e)
     
 async def formating_user(data):
     ls_data = []

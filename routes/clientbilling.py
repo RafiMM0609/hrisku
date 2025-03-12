@@ -74,7 +74,7 @@ async def list_cb_route(
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
 
-@router.get("/list-detail",
+@router.get("/list-detail/{id}",
     responses={
         "200": {"model": CudResponschema},
         "400": {"model": BadRequestResponse},
@@ -82,6 +82,7 @@ async def list_cb_route(
     },
 )
 async def list_detail_cb_route(
+    id:int,
     page:Optional[int]=1,
     page_size:Optional[int]=10,
     src:Optional[str]=None,
@@ -92,8 +93,10 @@ async def list_detail_cb_route(
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized())
-        data, num_data, num_page = await ClientBilRepo.list_client(
+        data, num_data, num_page = await ClientBilRepo.list_detail_cb(
             db=db,
+            id=id,
+            user=user,
             src=src,
             page=page,
             page_size=page_size,

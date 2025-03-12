@@ -238,7 +238,7 @@ async def formating_client(data):
                     "address": d.address,
                     "created_at": d.created_at.astimezone(
                         timezone(TZ)
-                    ).strftime("%d %m %Y %H:%M:%S") if d.created_at else None,
+                    ).strftime("%d-%m-%Y %H:%M:%S") if d.created_at else None,
                     "isact": d.isact
                 } for d in (item.outlets or [])
             ],
@@ -247,7 +247,7 @@ async def formating_client(data):
             "cs_email": item.cs_email,
             "created_at": item.created_at.astimezone(
                 timezone(TZ)
-            ).strftime("%d %m %Y %H:%M:%S") if item.created_at else None,
+            ).strftime("%d-%m-%Y %H:%M:%S") if item.created_at else None,
             "isact": item.isact
         })
     return result

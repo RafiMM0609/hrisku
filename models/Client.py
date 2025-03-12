@@ -10,6 +10,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from models import Base
+from models.ClientPayment import ClientPayment
 
 
 class Client(Base):
@@ -33,16 +34,11 @@ class Client(Base):
     isact = Column(Boolean, default=True)
     payment_status = Column(Boolean, default=True)
     due_date_payment = Column(Date, nullable=True)
-    due_date_employee = Column(Date, nullable=True)
-
-
-    @property
-    def formatted_due_date(self):
-        return self.due_date_payment.strftime('%d-%m-%Y') if self.due_date_payment else None
     
     # Relation
     user_client = relationship("User", back_populates="client_user")
     outlets = relationship("ClientOutlet", back_populates="client")
     bpjs = relationship("Bpjs", back_populates="client")
     allowances = relationship("Allowances", back_populates="client")
+    client_payments = relationship("ClientPayment", back_populates="clients")
 

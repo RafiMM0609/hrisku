@@ -1,10 +1,15 @@
 from typing import Optional
 from email import utils
-from fastapi import APIRouter, Depends, Request, BackgroundTasks, Request, File, UploadFile
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import (
+    APIRouter, 
+    Depends, 
+    # Request, 
+    # BackgroundTasks, 
+    # Request, 
+    # File, 
+    # UploadFile
+)
 from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
-from asyncpg.exceptions import UniqueViolationError
 from models import get_db
 from core.file import generate_link_download
 from models.User import User
@@ -49,7 +54,7 @@ router = APIRouter(tags=["User Management"])
 )
 async def add_user_route(
     payload: AddUserRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     try:
@@ -86,7 +91,7 @@ async def list_user_route(
     page:Optional[int]=1,
     page_size:Optional[int]=10,
     src:Optional[str]=None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     try:
@@ -113,7 +118,7 @@ async def list_user_route(
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
 
-@router.post("/delete/{id}",
+@router.delete("/delete/{id}",
     responses={
         "201": {"model": CreateSuccessResponse},
         "400": {"model": BadRequestResponse},
@@ -122,7 +127,7 @@ async def list_user_route(
 )
 async def delete_route(
     id:str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     try:
@@ -140,7 +145,7 @@ async def delete_route(
         )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
-@router.post("/update/{id}",
+@router.put("/update/{id}",
     responses={
         "201": {"model": CreateSuccessResponse},
         "400": {"model": BadRequestResponse},
@@ -150,7 +155,7 @@ async def delete_route(
 async def update_route(
     id:str,
     payload:EditUserRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     try:

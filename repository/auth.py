@@ -18,6 +18,7 @@ import asyncio
 os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
 import cv2
+from schemas.auth import FirstLoginUserRequest
 
 backends = [
   'opencv', 
@@ -37,7 +38,52 @@ def resize_image(image_path, size=(224, 224)):
     img = cv2.imread(image_path)
     resized_img = cv2.resize(img, size)
     return resized_img
-
+async def first_login(
+    db:Session,
+    user: User,
+    payload: FirstLoginUserRequest
+):
+    try:
+        user.password = generate_hash_password(password=payload.password)
+        user.first_login = None
+        db.add(user)
+        db.commit()
+        return user
+    except Exception as e:
+        print(f"Error first login: {e}")
+        raise ValueError("Error first login")
+async def regis_face(
+    upload_file:UploadFile,
+    user: User,
+    db: Session,
+):
+    try:
+        from deepface import DeepFace
+        file_extension = os.path.splitext(upload_file.filename)[1]
+        now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        path = await upload_file_to_local(
+                upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
+            )
+        loop = asyncio.get_running_loop()
+        resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
+                                                
+        # face detection
+        objs = DeepFace.analyze(
+            img_path = resized_img1, 
+            actions = ['age', 'gender', 'race', 'emotion'],
+        )
+        delete_file_in_local(folder=LOCAL_PATH, path=path)
+        print(objs)
+        path = await upload_file(
+            upload_file=upload_file, path=f"/face/face-{user.name}{now.replace(' ','_')}{file_extension}"
+        )
+        user.face_id = path
+        db.add(user)
+        db.commit()
+        return "Oke"
+    except Exception as e:
+        print(f"Error regis face: {e}")
+        raise ValueError("Error regis face")
 async def face(
     upload_file:UploadFile,
     user: User,

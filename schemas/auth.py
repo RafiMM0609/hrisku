@@ -9,6 +9,11 @@ class CreateUserRequest(BaseModel):
     face_id: Optional[str]
     # password: Optional[str]
 
+class FirstLoginUserRequest(BaseModel):
+    email: str
+    password: str
+    confirm_password: str
+
 class LoginRequest(BaseModel):
     email: str
     password: str

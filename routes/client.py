@@ -66,7 +66,7 @@ async def add_client_route(
             )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
-@router.post("/edit/{id}",
+@router.put("/edit/{id}",
     responses={
         "201": {"model": CudResponschema},
         "400": {"model": BadRequestResponse},

@@ -36,52 +36,37 @@ from schemas.auth import (
     LoginRequest,
     CreateUserRequest,
     MeSuccessResponse,
-    RegisRequest
+    RegisRequest,
+    FirstLoginUserRequest,
 )
 # from core.file import generate_link_download
 from repository import auth as authRepo
 
 router = APIRouter(tags=["Auth"])
-
-
-@router.post("/create-user",
+    
+@router.post("/first-login",
     responses={
-        "200": {"model": CudResponschema},
+        "201": {"model": CudResponschema},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def create_ser(
-    payload: CreateUserRequest,
-    db: AsyncSession = Depends(get_db)
-):  # <-- Perbaikan di sini
+async def first_login_user(
+    payload: FirstLoginUserRequest,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
     try:
-        new_user = User(
-            email=payload.email,
-            name=payload.name,
-            phone=payload.phone,
-            face_id=payload.face_id,
-            password=generate_hash_password("0000")
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized(message="Invalid/Expired token"))
+        data = await authRepo.first_login(
+            db=db,
+            user=user,
+            payload=payload,
         )
-        db.add(new_user)
-        try:
-            db.commit()
-            db.refresh(new_user)  # <-- Pastikan data tersimpan sebelum digunakan
-            return common_response(CudResponse(message="User added!", data={"user_id": str(new_user.id)}))
-        except IntegrityError as e:
-            print("ini e: \n", e.orig)
-            error_message = str(e.orig)
-            if "duplicate key value" in error_message:
-                if 'email' in error_message:
-                    raise ValueError("Email sudah terdaftar. Silakan gunakan email lain.")
-                elif 'phone' in error_message:
-                    raise ValueError("Nomor telepon sudah terdaftar. Silakan gunakan nomor lain.")
-                else:
-                    raise ValueError("Data duplikat terdeteksi.")
-            else: 
-                raise
+        return CudResponse(message="Success change password")
     except Exception as e:
-        db.rollback()  # <-- Hindari data corrupt jika error terjadi
         return common_response(BadRequest(message=str(e)))
 @router.post(
     "/face",
@@ -92,7 +77,7 @@ async def create_ser(
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def face(
+async def face_route(
     file: UploadFile = File(),
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
@@ -113,6 +98,34 @@ async def face(
         import traceback
         print("ERROR :",e)
         traceback.print_exc()
+        return common_response(BadRequest(message=str(e)))
+@router.post(
+    "/regis-face",
+        responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def regis_face_route(
+    file: UploadFile = File(),
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized(message="Invalid/Expired token"))
+        data = await authRepo.regis_face(
+            db=db,
+            user=user,
+            upload_file=file,
+        )
+        if not data:
+            raise ValueError('Your picture are not valid')
+        return CudResponse(message="Picture verified")
+    except Exception as e:
         return common_response(BadRequest(message=str(e)))
 
 @router.post(

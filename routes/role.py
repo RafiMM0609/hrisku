@@ -72,3 +72,27 @@ async def list_role_route(
             )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+@router.get("/option",
+    responses={
+        "200": {"model": ListRoleResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_role_route(
+    db: AsyncSession = Depends(get_db),
+    src:Optional[str] = None
+):
+    try:
+        role_data= await RoleRepo.role_option(
+            db=db,
+            src=src,
+        )
+        return common_response(
+            Ok(
+                message="Succes get data option",
+                data=role_data
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))

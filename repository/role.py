@@ -24,6 +24,31 @@ from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import Session
 from math import ceil
 
+async def role_option(
+    db:Session,
+    src:Optional[str] = None
+):
+    try:
+        query = (select(Role.id, Role.name).filter(Role.isact==True)
+        )
+        if src:
+            query = query.filter(Role.name.ilike(f"%{src}%"))
+        data = db.execute(query).all()
+        return (await formating_role_option(data))
+    except Exception as e:
+        raise ValueError(e)
+    
+async def formating_role_option(data):
+    lst = []
+    for d in data:
+        lst.append(
+            {
+                "id": d.id,
+                "name": d.name
+            }
+        )
+    return lst
+
 async def list_role(
     db:Session,
     page_size:int,

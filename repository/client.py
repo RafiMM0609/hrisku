@@ -24,6 +24,25 @@ from schemas.client import (
     EditClientRequest
 )
 
+
+async def delete_client(
+    id:int,
+    db:Session,
+    user=User,
+):
+    try:
+        client = db.execute(select(Client).filter(Client.id == id)).scalar()
+        if not client:
+            raise ValueError("Client not found")
+        client.isact = False
+        client.updated_by = user.id
+        db.add(client)
+        db.commit()
+        return "oke"
+    except Exception as e:
+        db.rollback()
+        print("Error delete client", e)
+        raise ValueError("Failed delete client")
 async def add_client(
     db:Session,
     user:User,

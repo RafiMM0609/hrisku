@@ -14,6 +14,8 @@ from routes.role import router as RoleRouter
 from routes.client import router as ClientRouter
 from routes.clientbilling import router as ClientBillingRouter
 from routes.file import router as FileRouter
+from routes.talent_mapping import router as TalentMappingRouter
+from routes.talent_monitor import router as TalentMonitorRouter
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -61,6 +63,8 @@ app.include_router(UserRouter, prefix="/user")
 app.include_router(RoleRouter, prefix="/role")
 app.include_router(ClientRouter, prefix="/client")
 app.include_router(ClientBillingRouter, prefix="/client-billing")
+app.include_router(TalentMappingRouter, prefix="/talent-mapping")
+app.include_router(TalentMonitorRouter, prefix="/talent-monitor")
 app.include_router(FileRouter, prefix="/file")
 
 @app.get("/")

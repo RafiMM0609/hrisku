@@ -137,3 +137,31 @@ async def list_client_route(
             )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+    
+@router.delete("/delete/{id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def delete_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data = await ClientRepo.delete_client(
+            db=db,
+            id=id,
+            user=user,
+        )
+        return common_response(Ok(
+            message="Success delete data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))

@@ -49,9 +49,13 @@ async def list_role_route(
     # role_id:int,
     page: Optional[int] = 1,
     page_size: Optional[int] = 10,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
 ):  # <-- Perbaikan di sini
     try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
         role_data, num_data, num_page = await RoleRepo.list_role(
             db=db,
             page_size=page_size,
@@ -81,9 +85,13 @@ async def list_role_route(
 )
 async def list_role_route(
     db: AsyncSession = Depends(get_db),
-    src:Optional[str] = None
+    src:Optional[str] = None,
+    token: str = Depends(oauth2_scheme),
 ):
     try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
         role_data= await RoleRepo.role_option(
             db=db,
             src=src,

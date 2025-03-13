@@ -34,3 +34,23 @@ class ListUserResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class ShiftRequest(BaseModel):
+    day: str
+    start_time : str = "08.00"
+    end_time : str = "15.00"
+class ShiftMappingRequest(BaseModel):
+    workdays : int
+    shift: List[ShiftRequest]
+
+class RegisTalentRequest(BaseModel):
+    photo: Optional[str] = None
+    name: str
+    dob: str = "01-12-2004"
+    nik: str
+    email: str
+    phone: str
+    address: str
+    client_id : int
+    outlet_id : int
+    shift: ShiftMappingRequest

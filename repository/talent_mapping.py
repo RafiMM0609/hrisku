@@ -13,10 +13,65 @@ from pytz import timezone
 from settings import TZ, LOCAL_PATH
 from fastapi import UploadFile
 from schemas.talent_mapping import (
-    ListAllUser
+    ListAllUser,
+    RegisTalentRequest,
 )
 import os
 import asyncio
+
+async def add_user_validator(db: Session, payload: RegisTalentRequest):
+    try:
+        errors = None
+        queries = []
+
+        if payload.phone:
+            queries.append(select(User.id).filter(User.phone == payload.phone).exists())
+
+        if payload.email:
+            queries.append(select(User.id).filter(User.email == payload.email).exists())
+
+        if queries:
+            result = db.execute(select(*queries)).fetchall()
+
+            if payload.role_id and result[0][0]:  # Cek role_id
+                errors = "Phone number already used"
+
+            if payload.email and result[0][1]:  # Cek email
+                errors = "Email already exists"
+        if errors:
+            return {"success": False, "errors": errors}
+        return {"success": True}
+
+    except Exception as e:
+        print(f"Validation error: {e}")
+
+async def regist_talent(
+    db: Session,
+    user:User,
+    payload: RegisTalentRequest,
+    role_id: int = 1,
+):
+    try:
+        role = db.execute(
+            select(Role)
+            .filter(Role.id==role_id)).scalar()
+        new_user = User(
+            photo=payload.photo,
+            name=payload.name,
+            birth_date=payload.dob,
+            nik=payload.nik,
+            email=payload.email,
+            phone=payload.phone,
+            address=payload.address,
+            client_id=payload.client_id
+        )
+        new_user.roles.append(role)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except Exception as e:
+        print("Error regis talent : \n", e)
+        raise ValueError("Failed regis talent")
 
 async def list_talent(
     db: Session,

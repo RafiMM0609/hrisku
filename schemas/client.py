@@ -33,7 +33,7 @@ class AddClientRequest(BaseModel):
     outlet: List[Outlet]
     basic_salary: float
     agency_fee: float
-    payment_date: str
+    payment_date:str = "01-12-2999"
     bpjs: List[AddBpjsRequest]
     allowences: List[AddAllowencesRequest]
     cs_person: Optional[str] = None

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from math import ceil
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -45,14 +45,14 @@ async def list_client_billing(
     except Exception as e:
         raise ValueError(e)
     
-async def formating_client(data):
+async def formating_client(data:List[Client]):
     if not data:
         return []
 
     result = []
     for item in data:
         result.append({
-            "id": item.id,
+            "id": item.id_client,
             "name": item.name,
             "address": item.address,
             "created_at": item.created_at.astimezone(

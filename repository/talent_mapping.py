@@ -85,6 +85,7 @@ async def list_talent(
 
         # Query utama dengan JOIN ke Client
         query = (select(
+            User.id_user,
             User.name,
             User.birth_date,
             User.nik,
@@ -136,7 +137,7 @@ async def formating_talent(data:List[User]):
     ls_data = []
     for d in data:
         ls_data.append({
-            "talend_id": "T0001",
+            "talend_id": d.id_user,
             "name": d.name,
             "dob": d.birth_date,
             "nik": d.nik,

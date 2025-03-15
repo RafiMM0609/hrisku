@@ -51,3 +51,18 @@ class ListUserResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class DetailUser(BaseModel):
+    user_id:str
+    name:str
+    email:str
+    phone:str
+    role:Organization
+    address:str
+
+class DetailUserResponse(BaseModel):
+    meta: MetaResponse
+    data: DetailUser
+    status: str
+    code: int
+    message: str

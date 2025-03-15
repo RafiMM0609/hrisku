@@ -34,8 +34,8 @@ class AddClientRequest(BaseModel):
     basic_salary: float
     agency_fee: float
     payment_date:str = "01-12-2999"
-    bpjs: List[AddBpjsRequest]
-    allowences: List[AddAllowencesRequest]
+    bpjs: Optional[List[AddBpjsRequest]] = None
+    allowences: Optional[List[AddAllowencesRequest]] = None
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None
@@ -47,8 +47,8 @@ class EditClientRequest(BaseModel):
     basic_salary: str
     agency_fee: str
     payment_date:str = "01-12-2999"
-    bpjs: List[AddBpjsRequest]
-    allowences: List[AddAllowencesRequest]
+    bpjs: Optional[List[AddBpjsRequest]] = None
+    allowences: Optional[List[AddAllowencesRequest]] = None
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None
@@ -90,6 +90,26 @@ class ListDetailClientBilling(BaseModel):
 class ListClientBillingResponse(BaseModel):
     meta: MetaResponse
     data: ListDetailClientBilling
+    status: str
+    code: int
+    message: str
+
+class DetailClient(BaseModel):
+    name: str
+    address: str
+    outlet: List[Outlet]
+    basic_salary: str
+    agency_fee: str
+    payment_date:str = "01-12-2999"
+    bpjs: Optional[List[AddBpjsRequest]] = None
+    allowences: Optional[List[AddAllowencesRequest]] = None
+    cs_person: Optional[str] = None
+    cs_number: Optional[str] = None
+    cs_email: Optional[str] = None
+
+class DetailClientResponse(BaseModel):
+    meta: MetaResponse
+    data: DetailClient
     status: str
     code: int
     message: str

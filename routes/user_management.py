@@ -38,6 +38,7 @@ from schemas.user_management import (
     CreateSuccessResponse,
     ListUserResponse,
     EditUserRequest,
+    DetailUserResponse,
 )
 # from core.file import generate_link_download
 from repository import user_management as UserRepo
@@ -177,6 +178,35 @@ async def update_route(
         )
         return common_response(Ok(
             message="Success edit data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+
+@router.get("/{id}",
+    responses={
+        "200": {"model": DetailUserResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def detail_user_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        user_data = await UserRepo.detail_user(
+            db=db,
+            id_user=id,
+        )
+        return common_response(Ok(
+            data=user_data,
+            message="Success get data"
             )
         )
     except Exception as e:

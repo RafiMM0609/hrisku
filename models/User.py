@@ -27,6 +27,8 @@ class User(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP)
     isact = Column(Boolean, default=True)
+    id_seq = Column(Integer, nullable=True)
+    id_user = Column(String(10), nullable=True)
 
     # One  to Many
     client_user = relationship("Client", back_populates="user_client", foreign_keys=[client_id])

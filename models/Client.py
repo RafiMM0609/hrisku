@@ -35,6 +35,7 @@ class Client(Base):
     isact = Column(Boolean, default=True)
     payment_status = Column(Boolean, default=True)
     due_date_payment = Column(Date, nullable=True)
+    id_client = Column(String, nullable=True)
     
     # Relation
     user_client = relationship("User", back_populates="client_user")

@@ -1,7 +1,7 @@
 from typing import Optional
 from math import ceil
 import secrets
-from sqlalchemy import select, func, distinct
+from sqlalchemy import select, func, distinct, update
 from sqlalchemy.orm import Session
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local
@@ -63,6 +63,10 @@ async def add_client(
         db.add(new_client)
         db.commit()
         db.refresh(new_client)
+        exist_client_id = new_client.id
+        new_client.id_client = await create_custom_id(new_client.id)
+        db.merge(new_client)
+        db.commit()
         ls_bpjs = []
         ls_allowances = []
         ls_outlet = []
@@ -75,20 +79,22 @@ async def add_client(
                 address = data.address
             )
             ls_outlet.append(new_outlet)
-        for data in payload.bpjs:
-            new_bpjs = Bpjs(
-                client_id = new_client.id,
-                name = data.name,
-                amount = data.amount
-            )
-            ls_bpjs.append(new_bpjs)
-        for data in payload.allowences:
-            new_allowances = Allowances(
-                client_id = new_client.id,
-                name = data.name,
-                amount = data.amount
-            )
-            ls_allowances.append(new_allowances)
+        if isinstance(payload.bpjs, (list, tuple)):
+            for data in payload.bpjs:
+                new_bpjs = Bpjs(
+                    client_id = new_client.id,
+                    name = data.name,
+                    amount = data.amount
+                )
+                ls_bpjs.append(new_bpjs)
+        if isinstance(payload.allowences, (list, tuple)):
+            for data in payload.allowences:
+                new_allowances = Allowances(
+                    client_id = new_client.id,
+                    name = data.name,
+                    amount = data.amount
+                )
+                ls_allowances.append(new_allowances)
         # with Session(engine) as session:
         db.bulk_save_objects(ls_bpjs)
         db.bulk_save_objects(ls_allowances)
@@ -96,21 +102,35 @@ async def add_client(
         db.commit()
         return new_client
     except Exception as e:
-        db.rollback()
+        db.execute(
+            (
+                update(Client)
+                .where(Client.id == exist_client_id)
+                .values(isact=False)
+            )
+        )
+        db.commit()
         raise ValueError(e)
+async def create_custom_id(
+        id: int, 
+        prefix:Optional[str]="C"
+) -> str:
+    num_digits = len(str(id))
+    formatted_id = f"{id:0{num_digits+1}d}"  
+    return prefix + formatted_id
 async def add_validator(db: Session, payload: AddClientRequest):
     try:
         errors = None
         queries = []
 
         if payload.name:
-            queries.append(select(Client.id).filter(Client.name == payload.name).exists())
+            queries.append(select(Client.id).filter(Client.name == payload.name, Client.isact==True).exists())
 
         if payload.cs_email:
-            queries.append(select(Client.cs_email).filter(Client.cs_email == payload.cs_email).exists())
+            queries.append(select(Client.cs_email).filter(Client.cs_email == payload.cs_email, Client.isact==True).exists())
 
         if payload.cs_number:
-            queries.append(select(Client.cs_number).filter(Client.cs_number == payload.cs_number).exists())
+            queries.append(select(Client.cs_number).filter(Client.cs_number == payload.cs_number, Client.isact==True).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
@@ -137,13 +157,13 @@ async def edit_validator(db: Session, payload: AddClientRequest, id:int):
         #     queries.append(select(Client.id).filter(Client.id == payload.role_id).exists())
 
         if payload.name:
-            queries.append(select(Client.id).filter(Client.id != id, Client.name == payload.name).exists())
+            queries.append(select(Client.id).filter(Client.id != id, Client.name == payload.name, Client.isact==True).exists())
 
         if payload.cs_email:
-            queries.append(select(Client.cs_email).filter(Client.id != id, Client.cs_email == payload.cs_email).exists())
+            queries.append(select(Client.cs_email).filter(Client.id != id, Client.cs_email == payload.cs_email, Client.isact==True).exists())
 
         if payload.cs_number:
-            queries.append(select(Client.cs_number).filter(Client.id != id, Client.cs_number == payload.cs_email).exists())
+            queries.append(select(Client.cs_number).filter(Client.id != id, Client.cs_number == payload.cs_email, Client.isact==True).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
@@ -168,7 +188,7 @@ async def edit_client(
     client_id:int,
 )->Client:
     try:
-        client = db.execute(select(Client).filter(Client.id == client_id)).scalar()
+        client = db.execute(select(Client).filter(Client.id_client == client_id)).scalar()
         if not client:
             raise ValueError("Client not found")
         client.name = payload.name
@@ -181,19 +201,74 @@ async def edit_client(
         client.updated_by = user.id
         db.add(client)
         db.commit()
-        # db.refresh(client)
-        # return client
+        ls_bpjs = []
+        ls_allowances = []
+        ls_outlet = []
+        if isinstance(payload.outlet, (list, tuple)):
+            db.execute(
+                update(ClientOutlet)
+                .where(ClientOutlet.client_id==client.id)
+                .values(isact=False)
+            )
+            db.commit()
+            for data in payload.outlet:
+                new_outlet = ClientOutlet(
+                    client_id = client.id,
+                    name = data.name,
+                    longitude = data.longitude,
+                    latitude = data.latitude,
+                    address = data.address
+                )
+                ls_outlet.append(new_outlet)
+        if isinstance(payload.bpjs, (list, tuple)):
+            db.execute(
+                update(Bpjs)
+                .where(Bpjs.client_id==client.id)
+                .values(isact=False)
+            )
+            db.commit()
+            for data in payload.bpjs:
+                new_bpjs = Bpjs(
+                    client_id = client.id,
+                    name = data.name,
+                    amount = data.amount
+                )
+                ls_bpjs.append(new_bpjs)
+        if isinstance(payload.allowences, (list, tuple)):
+            db.execute(
+                update(Allowances)
+                .where(Allowances.client_id==client.id)
+                .values(isact=False)
+            )
+            db.commit()
+            for data in payload.allowences:
+                new_allowances = Allowances(
+                    client_id = client.id,
+                    name = data.name,
+                    amount = data.amount
+                )
+                ls_allowances.append(new_allowances)
+        db.bulk_save_objects(ls_bpjs)
+        db.bulk_save_objects(ls_allowances)
+        db.bulk_save_objects(ls_outlet)
+        db.commit()    
         return "oke"
     except Exception as e:
+        db.rollback()
+        db.execute(
+            update(Client)
+            .where(Client.id==client.id)
+            .values(isact=False)
+        )
+        db.commit()
         raise ValueError(e)
-    
 async def delete_client(
     db:Session,
     user:User,
     client_id:int
 ):
     try:
-        client = db.execute(select(Client).filter(Client.id == client_id)).scalar()
+        client = db.execute(select(Client).filter(Client.id_client == client_id)).scalar()
         if not client:
             raise ValueError("Client not found")
         client.isact = False
@@ -247,7 +322,7 @@ async def formating_client(data):
     result = []
     for item in data:
         result.append({
-            "id": item.id,
+            "id": item.id_client,
             "name": item.name,
             "address": item.address,
             "payment_date": str(item.due_date_payment),
@@ -272,4 +347,44 @@ async def formating_client(data):
         })
     return result
 
-    
+async def detail_client(
+    db:Session,
+    id:int
+):
+    try:
+        query = select(Client).filter(Client.id_client == id).limit(1)
+        client = db.execute(query).scalar()
+        return await formatin_detail(client)
+    except Exception as e:
+        print("Error detail: \n",e)
+        raise ValueError("Failed get detail client")
+async def formatin_detail(data:Client):
+    obj = {
+        "name": data.name,
+        "address": data.address,
+        "outlet":[
+            {
+            "id": x.id,
+            "name": x.name,
+        } for x in data.outlets
+        ] if data.outlets else [],
+        "basic_salary": data.basic_salary,
+        "agency_fee": data.fee_agency,
+        "payment_date": data.due_date_payment.strftime("%d-%m-%Y"),
+        "bpjs":[
+            {
+            "id": x.id,
+            "name": x.name,
+        } for x in data.bpjs
+        ] if data.bpjs else [],
+        "allowences":[
+            {
+            "id": x.id,
+            "name": x.name,
+        } for x in data.allowances
+        ] if data.allowances else [],
+        "cs_person":data.cs_person,
+        "cs_number":data.cs_number,
+        "cs_email":data.cs_email
+    }
+    return obj

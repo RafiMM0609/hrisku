@@ -1,12 +1,13 @@
 from typing import Optional
 import secrets
 from math import ceil
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local
 from models.User import User
 from models.Role import Role
+from models.UserRole import UserRole
 from models.Client import Client
 from datetime import datetime, timedelta
 from pytz import timezone
@@ -19,6 +20,47 @@ from schemas.user_management import (
 import os
 import asyncio
 
+
+async def detail_user(
+    db:Session,
+    id_user:str,
+):
+    try:
+        query = (
+            select(
+                User.id_user,
+                User.name,
+                User.email,
+                User.phone,
+                User.address,
+                User.id,
+            ).filter(User.id_user == id_user)
+        )
+        user = db.execute(query).first() 
+        id_role = db.execute(
+            select(UserRole.c.role_id).filter(UserRole.c.emp_id==user[5])
+        ).first()
+        role = db.execute(
+            select(Role.id, Role.name).filter(Role.id==id_role[0])
+        ).first()
+        return await formated_detail(user, role)
+    except Exception as e:
+        print("Error get detail user : \n", e)
+        raise ValueError("Failed get detail user")
+    
+async def formated_detail(user, role):
+    obj = {
+        "id_user" : user[0],
+        "name":user[1],
+        "email":user[2],
+        "phone":user[3],
+        "role":{
+            "id":role[0],
+            "name":role[1]
+        },
+        "address":user[4],
+    }
+    return obj
 
 async def list_role(
     db:Session
@@ -57,10 +99,32 @@ async def add_user(
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        new_user.id_user = await create_custom_id(new_user.id_seq)
+        db.merge(new_user)  # Gunakan merge daripada add untuk menghindari error
+        db.commit()
         return new_user
     except Exception as e:
-        raise ValueError(e)
-async def add_user_validator(db: Session, payload: AddUserRequest):
+        db.rollback()
+        db.execute(
+            (
+                update(User)
+                .where(User.id == new_user.id)
+                .values(isact=False)
+            )
+        )
+        db.commit()
+        print("Error add user : \n", e)
+        raise ValueError("Failed add user")
+async def create_custom_id(
+        id: int, 
+        prefix:Optional[str]="U"
+) -> str:
+    num_digits = len(str(id))
+    formatted_id = f"{id:0{num_digits+1}d}"  
+    return prefix + formatted_id
+
+    
+async def add_user_valikdator(db: Session, payload: AddUserRequest):
     try:
         errors = None
         queries = []
@@ -123,7 +187,7 @@ async def edit_user(
 ):
     try:
         user_exist = db.execute(
-            select(User).filter(User.id == id)
+            select(User).filter(User.id_user == id)
         ).scalar_one()
         if not user_exist:
             raise ValueError("User not found")
@@ -146,7 +210,8 @@ async def edit_user(
         db.refresh(user_exist)
         return user_exist
     except Exception as e:
-        raise ValueError(e)
+        print("Error edit user \n", e)
+        raise ValueError("Failed edit user")
 async def delete_user(
     db: Session,
     id: str,
@@ -154,7 +219,7 @@ async def delete_user(
 ):
     try:
         user_exist = db.execute(
-            select(User).filter(User.id == id)
+            select(User).filter(User.id_user == id)
         ).scalar_one()
         if not user_exist:
             raise ValueError("User not found")
@@ -165,7 +230,8 @@ async def delete_user(
         db.refresh(user_exist)
         return user_exist
     except Exception as e:
-        raise ValueError(e)
+        print("Error delete user \n", e)
+        raise ValueError("Failed delete user")
 # async def list_user(
 #     db: Session,
 #     page: int,
@@ -218,13 +284,13 @@ async def list_user(
 
         # Query utama dengan JOIN ke Client
         query = (select(User)
-                 .join(ClientAlias, ClientAlias.id == User.client_id)
+                 .outerjoin(ClientAlias, ClientAlias.id == User.client_id)
                  .filter(User.isact == True))
 
         # Query count untuk paginasi
         query_count = (select(func.count(User.id))
-                       .join(ClientAlias, ClientAlias.id == User.client_id)
-                       .filter(User.isact == True))
+                    .outerjoin(ClientAlias, ClientAlias.id == User.client_id)
+                    .filter(User.isact == True))
 
         # Jika ada pencarian (src), cari di nama user & nama client
         if src:
@@ -259,7 +325,7 @@ async def formating_user(data):
     ls_data = []
     for d in data:
         ls_data.append({
-            "id_user": d.id,
+            "id_user": d.id_user,
             "name": d.name,
             "email": d.email,
             "phone": d.phone,
@@ -276,19 +342,3 @@ async def formating_user(data):
             "status": d.isact,
         })
     return ls_data
-
-
-async def detail_user(
-    db: Session,
-    user: User,
-    id: str,
-):
-    try:
-        user = db.execute(
-            select(User).filter(User.id == id)
-        ).scalar_one()
-        if not user:
-            raise ValueError("User not found")
-        return user
-    except Exception as e:
-        raise ValueError(e)

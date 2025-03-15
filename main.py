@@ -2,11 +2,13 @@ from fastapi import FastAPI, Request
 import logging
 import time
 # import uvicorn
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from settings import (
     ENVIRONTMENT
 )
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from routes.auth import router as AuthRouter
 from routes.user_management import router as UserRouter
@@ -54,9 +56,11 @@ app.add_middleware(
     # allow_origins=CORS_ALLOWED_ORIGINS,
     allow_origins=['*'],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+# app.add_middleware(HTTPSRedirectMiddleware) # Untuk batasi hanya https
+# app.add_middleware(GZipMiddleware, minimum_size=500)  # Hanya mengompresi response di atas 500 byte
 
 app.include_router(AuthRouter, prefix="/auth")
 app.include_router(UserRouter, prefix="/user")

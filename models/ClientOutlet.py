@@ -11,6 +11,7 @@ from sqlalchemy.orm import relationship
 from models import Base
 from models.UserRole import UserRole
 from models.RolePermission import RolePermission
+from models.User import User
 
 
 class ClientOutlet(Base):
@@ -32,3 +33,4 @@ class ClientOutlet(Base):
     isact = Column(Boolean, default=True)
 
     client = relationship("Client", back_populates="outlets")
+    outlet_user = relationship("User", back_populates="user_outlet", foreign_keys=[User.outlet_id])

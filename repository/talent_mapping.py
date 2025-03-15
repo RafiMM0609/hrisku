@@ -1,13 +1,15 @@
 from typing import Optional, List
 import secrets
 from math import ceil
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local
 from models.User import User
 from models.Role import Role
+from models.ShiftSchedule import ShiftSchedule
 from models.Client import Client
+from models.ClientOutlet import ClientOutlet
 from datetime import datetime, timedelta
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
@@ -15,6 +17,7 @@ from fastapi import UploadFile
 from schemas.talent_mapping import (
     ListAllUser,
     RegisTalentRequest,
+    EditTalentRequest,
 )
 import os
 import asyncio
@@ -24,20 +27,28 @@ async def add_user_validator(db: Session, payload: RegisTalentRequest):
         errors = None
         queries = []
 
-        if payload.phone:
-            queries.append(select(User.id).filter(User.phone == payload.phone).exists())
+        if payload.outlet_id and payload.client_id:
+            queries.append(select(ClientOutlet.id).filter(ClientOutlet.id == payload.outlet_id, ClientOutlet.client_id==payload.client_id ,ClientOutlet.isact==True).exists())
 
         if payload.email:
-            queries.append(select(User.id).filter(User.email == payload.email).exists())
+            queries.append(select(User.id).filter(User.email == payload.email, User.isact==True).exists())
+
+        if payload.client_id:
+            queries.append(select(Client.id).filter(Client.id == payload.client_id, Client.isact==True).exists())
+
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
 
-            if payload.role_id and result[0][0]:  # Cek role_id
-                errors = "Phone number already used"
+            if payload.client_id and payload.outlet_id and not result[0][0]:  # Cek outlet
+                errors = "Outlet not valid"
 
             if payload.email and result[0][1]:  # Cek email
                 errors = "Email already exists"
+
+            if payload.client_id and not result[0][2]:  # Cek client
+                errors = "Client not found"
+
         if errors:
             return {"success": False, "errors": errors}
         return {"success": True}
@@ -45,7 +56,7 @@ async def add_user_validator(db: Session, payload: RegisTalentRequest):
     except Exception as e:
         print(f"Validation error: {e}")
 
-async def regist_talent(
+async def add_talent(
     db: Session,
     user:User,
     payload: RegisTalentRequest,
@@ -58,8 +69,9 @@ async def regist_talent(
         new_user = User(
             photo=payload.photo,
             name=payload.name,
-            birth_date=payload.dob,
+            birth_date=datetime.strptime(payload.dob, "%d-%m-%Y").date(),
             nik=payload.nik,
+            outlet_id=payload.outlet_id,
             email=payload.email,
             phone=payload.phone,
             address=payload.address,
@@ -69,6 +81,126 @@ async def regist_talent(
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        db.execute(
+        update(User).where(User.id == new_user.id).values(id_user=await create_custom_id(new_user.id_seq))
+        )
+        db.commit()
+        if isinstance(payload.shift, (list, tuple)):
+            await mapping_schedule(
+                db, 
+                new_user.client_id,
+                new_user.id, 
+                payload.shift, 
+                payload.workdays
+            )
+    except Exception as e:
+        print("Error regis talent : \n", e)
+        raise ValueError("Failed regis talent")
+
+async def mapping_schedule(db, client_id, emp_id, data, workdays):
+    try:
+        ls_shift = []
+        for item in data:
+            new_shift= ShiftSchedule(
+                emp_id=emp_id,
+                client_id=client_id,
+                workdays=workdays,
+                time_start=datetime.strptime(item.start_time, "%H:%M").time(),
+                time_end=datetime.strptime(item.end_time, "%H:%M").time(),
+                day=item.day,
+                created_at=datetime.now(tz=timezone(TZ)),
+            )
+            ls_shift.append(new_shift)
+        db.bulk_save_objects(ls_shift)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print("Error mapping: \n", e)
+        
+
+async def create_custom_id(
+        id: int, 
+        prefix:Optional[str]="U"
+) -> str:
+    num_digits = len(str(id))
+    formatted_id = f"{id:0{num_digits+1}d}"  
+    return prefix + formatted_id
+
+async def edit_user_validator(db: Session, payload: EditTalentRequest, id_user:str):
+    try:
+        errors = None
+        queries = []
+
+        if payload.outlet_id and payload.client_id:
+            queries.append(select(ClientOutlet.id).filter(ClientOutlet.id == payload.outlet_id, ClientOutlet.client_id==payload.client_id ,ClientOutlet.isact==True).exists())
+
+        if payload.email:
+            queries.append(select(User.id).filter(User.email == payload.email, User.id_user==id_user, User.isact==True).exists())
+
+        if payload.client_id:
+            queries.append(select(Client.id).filter(Client.id == payload.client_id, Client.isact==True).exists())
+
+
+        if queries:
+            result = db.execute(select(*queries)).fetchall()
+
+            if payload.client_id and payload.outlet_id and not result[0][0]:  # Cek outlet
+                errors = "Outlet not valid"
+
+            if payload.email and result[0][1]:  # Cek email
+                errors = "Email already exists"
+
+            if payload.client_id and not result[0][2]:  # Cek client
+                errors = "Client not found"
+
+        if errors:
+            return {"success": False, "errors": errors}
+        return {"success": True}
+
+    except Exception as e:
+        print(f"Validation error: {e}")
+
+async def edit_talent(
+    db: Session,
+    id_user: str,
+    user:User,
+    payload: RegisTalentRequest,
+    role_id: int = 1,
+):
+    try:
+        user_exist=db.execute(
+            select(User)
+            .filter(User.id_user==id_user)
+            .limit(1)
+        ).scalar()
+        user_exist.photo=payload.photo
+        user_exist.name=payload.name
+        user_exist.birth_date=datetime.strptime(payload.dob, "%d-%m-%Y").date()
+        user_exist.nik=payload.nik
+        user_exist.outlet_id=payload.outlet_id
+        user_exist.email=payload.email
+        user_exist.phone=payload.phone
+        user_exist.address=payload.address
+        user_exist.client_id=payload.client_id
+        user_exist.updated_by=user.id
+        db.add(user_exist)
+        db.commit()
+        db.refresh(user_exist)
+        db.commit()
+        if isinstance(payload.shift, (list, tuple)):
+            db.execute(
+                update(ShiftSchedule)
+                .where(ShiftSchedule.emp_id==user_exist.id)
+                .values(isact=False)
+            )
+            db.commit()
+            await mapping_schedule(
+                db, 
+                user_exist.client_id,
+                user_exist.id, 
+                payload.shift, 
+                payload.workdays
+            )
     except Exception as e:
         print("Error regis talent : \n", e)
         raise ValueError("Failed regis talent")
@@ -146,3 +278,48 @@ async def formating_talent(data:List[User]):
             "address": d.address,
         })
     return ls_data
+
+async def detail_talent_mapping(
+    db: Session,
+    id_user: str,
+):
+    try:
+        query = select(User).filter(User.id_user == id_user).limit(1)
+        data = db.execute(query).scalar_one_or_none()
+        
+        if not data:
+            raise ValueError("User not found")
+    
+        return await formating_detail(data)
+    
+    except Exception as e:
+        print("Error detail mapping: \n", e)
+        raise ValueError("Failed to get data")
+
+async def formating_detail(data: User):
+    return {
+        "talent_id": data.id_user,
+        "name": data.name,
+        "dob": data.birth_date.strftime("%d-%m-%Y") if data.birth_date else None,
+        "nik": data.nik,
+        "email": data.email,
+        "phone": data.phone,
+        "address": data.address,
+        "client": {
+            "id": data.client_user.id if data.client_user else None,
+            "name": data.client_user.name if data.client_user else None,
+        },
+        "outlet": {
+            "id": data.user_outlet.id if data.user_outlet else None,
+            "name": data.user_outlet.name if data.user_outlet else None,
+        },
+        "workdays": data.user_shift[0].workdays if data.user_shift else None,
+        "shift": [
+            {
+                "shift_id": "S01",
+                "day": x.day,
+                "start_time": x.time_start.strftime("%H:%M"),
+                "end_time": x.time_end.strftime("%H:%M")
+            } for x in (data.user_shift or [])  # Prevent error if None
+        ]
+    }

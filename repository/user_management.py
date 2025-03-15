@@ -106,6 +106,7 @@ async def add_user(
         db.execute(
         update(User).where(User.id == new_user.id).values(id_user=await create_custom_id(new_user.id_seq))
         )
+        db.commit()
         return new_user
     except Exception as e:
         db.rollback()
@@ -119,6 +120,7 @@ async def add_user(
         db.commit()
         print("Error add user : \n", e)
         raise ValueError("Failed add user")
+    
 async def create_custom_id(
         id: int, 
         prefix:Optional[str]="U"

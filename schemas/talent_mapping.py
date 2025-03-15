@@ -37,11 +37,29 @@ class ListUserResponse(BaseModel):
 
 class ShiftRequest(BaseModel):
     day: str
-    start_time : str = "08.00"
-    end_time : str = "15.00"
-class ShiftMappingRequest(BaseModel):
-    workdays : int
-    shift: List[ShiftRequest]
+    start_time : str = "08:00"
+    end_time : str = "15:00"
+
+class ShiftResponse(BaseModel):
+    shift_id:str
+    day: str
+    start_time : str = "08:00"
+    end_time : str = "15:00"
+
+class DetailTalentMapping(BaseModel):
+    talent_id:str
+    name:str
+    dob:str="22-12-31"
+    nik:str
+    email:str
+    phone:str
+    address:str
+    client:Organization
+    outlet:Organization
+    workdays:int
+    shift:List[ShiftResponse]
+
+
 
 class RegisTalentRequest(BaseModel):
     photo: Optional[str] = None
@@ -53,4 +71,18 @@ class RegisTalentRequest(BaseModel):
     address: str
     client_id : int
     outlet_id : int
-    shift: ShiftMappingRequest
+    shift: Optional[List[ShiftRequest]]
+    workdays: Optional[int]
+
+class EditTalentRequest(BaseModel):
+    photo: Optional[str] = None
+    name: str
+    dob: str = "01-12-2004"
+    nik: str
+    email: str
+    phone: str
+    address: str
+    client_id : int
+    outlet_id : int
+    shift: Optional[List[ShiftRequest]]
+    workdays: Optional[int]

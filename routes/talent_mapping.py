@@ -35,12 +35,45 @@ from schemas.common import (
 )
 from schemas.talent_mapping import (
     CreateSuccessResponse,
-    ListUserResponse
+    ListUserResponse,
+    RegisTalentRequest,
+    EditTalentRequest,
 )
 # from core.file import generate_link_download
 from repository import talent_mapping as TalentRepo
 
 router = APIRouter(tags=["Talent Mapping"])
+    
+@router.post("",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def add_route(
+    payload: RegisTalentRequest,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        valid = await TalentRepo.add_user_validator(db, payload)
+        if not valid["success"]:
+            return common_response(BadRequest(message=valid["errors"]))
+        user_data = await TalentRepo.add_talent(
+            db=db,
+            user=user,
+            payload=payload,
+        )
+        return common_response(Ok(
+            message="Success add data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
     
 @router.get("/list",
     responses={
@@ -75,6 +108,67 @@ async def list_user_route(
                 "page": page,
             },
             message="Success get data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.put("/{id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def edit_route(
+    id:str,
+    payload: EditTalentRequest,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        valid = await TalentRepo.edit_user_validator(db, payload)
+        if not valid["success"]:
+            return common_response(BadRequest(message=valid["errors"]))
+        user_data = await TalentRepo.edit_talent(
+            db=db,
+            id_user=id,
+            user=user,
+            payload=payload,
+        )
+        return common_response(Ok(
+            message="Success add data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/{id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def detail_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        user_data = await TalentRepo.detail_talent_mapping(
+            db=db,
+            id_user=id
+        )
+        return common_response(Ok(
+            message="Success get data",
+            data=user_data,
             )
         )
     except Exception as e:

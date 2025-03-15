@@ -6,6 +6,7 @@ from models import Base
 from models.UserRole import UserRole
 from models.Role import Role
 from models.Client import Client
+from models.ShiftSchedule import ShiftSchedule
 
 class User(Base):
     __tablename__ = "user"
@@ -21,6 +22,7 @@ class User(Base):
     address = Column(String, nullable=False)
     face_id = Column(String, nullable=False)
     client_id = Column(Integer,ForeignKey("client.id") ,nullable=False)
+    outlet_id = Column(Integer,ForeignKey("client_outlet.id") ,nullable=False)
     password = Column(String, nullable=False)
     first_login = Column(String, nullable=False)
     birth_date = Column(String, nullable=False)
@@ -32,5 +34,7 @@ class User(Base):
 
     # One  to Many
     client_user = relationship("Client", back_populates="user_client", foreign_keys=[client_id])
+    user_shift = relationship("ShiftSchedule", back_populates="users", foreign_keys=[ShiftSchedule.emp_id])
+    user_outlet = relationship("ClientOutlet", back_populates="outlet_user", foreign_keys=[outlet_id])
     # Many to Many
     roles = relationship("Role", secondary=UserRole, back_populates="users")

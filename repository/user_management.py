@@ -124,7 +124,7 @@ async def create_custom_id(
     return prefix + formatted_id
 
     
-async def add_user_valikdator(db: Session, payload: AddUserRequest):
+async def add_user_validator(db: Session, payload: AddUserRequest):
     try:
         errors = None
         queries = []

@@ -8,6 +8,7 @@ from sqlalchemy import (
     Float, 
     Date
 )
+from pytz import timezone
 from sqlalchemy.orm import relationship
 from models import Base
 from models.ClientPayment import ClientPayment

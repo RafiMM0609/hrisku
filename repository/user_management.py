@@ -94,14 +94,18 @@ async def add_user(
             first_login=password,
             created_by=user.id,
             photo=payload.photo,
+            created_at=datetime.now(tz=timezone(TZ)),
         )
         new_user.roles.append(role)
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        new_user.id_user = await create_custom_id(new_user.id_seq)
-        db.merge(new_user)  # Gunakan merge daripada add untuk menghindari error
-        db.commit()
+        # new_user.id_user = await create_custom_id(new_user.id_seq)
+        # db.merge(new_user)  # Gunakan merge daripada add untuk menghindari error
+        # db.commit()
+        db.execute(
+        update(User).where(User.id == new_user.id).values(id_user=await create_custom_id(new_user.id_seq))
+        )
         return new_user
     except Exception as e:
         db.rollback()
@@ -133,7 +137,9 @@ async def add_user_validator(db: Session, payload: AddUserRequest):
             queries.append(select(Role.id).filter(Role.id == payload.role_id).exists())
 
         if payload.email:
-            queries.append(select(User.id).filter(User.email == payload.email).exists())
+            queries.append(select(User.id).filter(User.email == payload.email,
+                                                   User.isact==True
+                                                ).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
@@ -162,8 +168,8 @@ async def edit_user_validator(
             queries.append(select(Role.id).filter(Role.id == payload.role_id).exists())
 
         if payload.email:
-            queries.append(select(User).filter(User.id != id)
-                .filter(User.email == payload.email).exists())
+            queries.append(select(User)
+                .filter(User.id != id, User.email == payload.email, User.isact==True).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
@@ -171,7 +177,7 @@ async def edit_user_validator(
             if payload.role_id and not result[0][0]:  # Cek role_id
                 errors = "Role not found"
 
-            if payload.email and result[-1][0]:  # Cek email
+            if payload.email and result[0][1]:  # Cek email
                 errors = "Email already exists"
         if errors:
             return {"success": False, "errors": errors}

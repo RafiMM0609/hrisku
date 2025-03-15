@@ -59,13 +59,18 @@ async def add_client(
             cs_number=payload.cs_number,
             cs_email=payload.cs_email,
             basic_salary=payload.basic_salary,
+            created_at=datetime.now(tz=timezone(TZ)),
         )
         db.add(new_client)
         db.commit()
         db.refresh(new_client)
         exist_client_id = new_client.id
-        new_client.id_client = await create_custom_id(new_client.id)
-        db.merge(new_client)
+        # new_client.id_client = await create_custom_id(new_client.id)
+        # db.merge(new_client)
+        # db.commit()
+        db.execute(
+        update(Client).where(Client.id == new_client.id).values(id_client=await create_custom_id(new_client.id))
+        )
         db.commit()
         ls_bpjs = []
         ls_allowances = []

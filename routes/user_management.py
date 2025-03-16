@@ -211,3 +211,32 @@ async def detail_user_route(
         )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+    
+@router.put("/status/{id}",
+    responses={
+        "200": {"model": DetailUserResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def update_status_user_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        user_data = await UserRepo.edit_status_user(
+            db=db,
+            user=user,
+            id_user=id,
+        )
+        return common_response(Ok(
+            data=user_data,
+            message="Success edit data user"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))

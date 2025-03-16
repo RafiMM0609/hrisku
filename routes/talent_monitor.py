@@ -35,7 +35,10 @@ from schemas.common import (
 )
 from schemas.talent_monitor import (
     CreateSuccessResponse,
-    ListUserResponse
+    ListUserResponse,
+    TalentInformationResponse,
+    TalentMappingResponse,
+    DataContratResponse
 )
 # from core.file import generate_link_download
 from repository import talent_monitor as TalentRepo

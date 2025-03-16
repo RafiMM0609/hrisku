@@ -320,6 +320,6 @@ async def formating_detail(data: User):
                 "day": x.day,
                 "start_time": x.time_start.strftime("%H:%M"),
                 "end_time": x.time_end.strftime("%H:%M")
-            } for x in (data.user_shift or [])  # Prevent error if None
+            } for x in (data.user_shift or []) if x.isact
         ]
     }

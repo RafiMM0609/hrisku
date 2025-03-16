@@ -5,7 +5,8 @@ from sqlalchemy import(
     DateTime, 
     ForeignKey, 
     Boolean,
-    Float
+    Float,
+    Numeric
 )
 from sqlalchemy.orm import relationship
 from models import Base
@@ -24,8 +25,10 @@ class ClientOutlet(Base):
     region = Column(String, nullable=True)
     area = Column(String, nullable=True)
     address = Column(String, nullable=True)
-    longitude = Column(Float, nullable=True)
-    latitude = Column(Float, nullable=True)
+    # longitude = Column(Float, nullable=True)
+    longitude = Column(Numeric(10, 6), nullable=True)
+    # latitude = Column(Float, nullable=True)
+    latitude = Column(Numeric(10, 6), nullable=True)
     created_by = Column(ForeignKey("user.id"), nullable=True)
     updated_by = Column(ForeignKey("user.id"), nullable=True)
     created_at = Column(DateTime(timezone=True))

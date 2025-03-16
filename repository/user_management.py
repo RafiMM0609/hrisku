@@ -171,10 +171,11 @@ async def edit_user_validator(
 
         if payload.email:
             queries.append(select(User)
-                .filter(User.id != id, User.email == payload.email, User.isact==True).exists())
+                .filter(User.id_user != id, User.email == payload.email, User.isact==True).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
+            print(result)
 
             if payload.role_id and not result[0][0]:  # Cek role_id
                 errors = "Role not found"
@@ -240,43 +241,6 @@ async def delete_user(
     except Exception as e:
         print("Error delete user \n", e)
         raise ValueError("Failed delete user")
-# async def list_user(
-#     db: Session,
-#     page: int,
-#     page_size: int,
-#     src: Optional[str] = None
-# ):
-#     try:        
-#         limit = page_size
-#         offset = (page - 1) * limit
-
-#         query = (select(User).filter(User.isact==True)
-#         )
-#         query_count = (select(func.count(User.id)).filter(User.isact==True)
-#         )
-
-#         if src:
-#             query = (query
-#                      .filter(User.name.ilike(f"%{src}%"))
-#                      .filter(User.email.ilike(f"%{src}%"))
-#                      )
-#             query_count = (query_count
-#                      .filter(User.name.ilike(f"%{src}%"))
-#                      .filter(User.email.ilike(f"%{src}%"))
-#                      )
-
-#         query = (
-#             query.order_by(User.created_at.desc())
-#             .limit(limit=limit)
-#             .offset(offset=offset)
-#         )
-
-#         data = db.execute(query).scalars().all()
-#         num_data = db.execute(query_count).scalar()
-#         num_page = ceil(num_data / limit)
-#         return (await formating_user(data), num_data, num_page)
-#     except Exception as e:
-#         raise ValueError(e)
 async def list_user(
     db: Session,
     page: int,
@@ -347,6 +311,22 @@ async def formating_user(data):
                 "name": d.roles[0].name if d.roles else None,
                 "name": d.roles[0].name if d.roles else None,
             },
-            "status": d.isact,
+            "status": d.status,
         })
     return ls_data
+
+async def edit_status_user(
+    db:Session,
+    user:User,
+    id_user:str
+):
+    try:
+        db.execute(
+            update(User)
+            .where(User.id_user==id_user)
+            .values(status=False, updated_by=user.id)
+        )
+        db.commit()
+    except Exception as e:
+        print("Error edit status user: \n", e)
+        raise ValueError("Failed edit status user")

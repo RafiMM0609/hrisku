@@ -19,8 +19,8 @@ engine = create_engine(
 )
 
 # Create database session
+# SessionLocal = sessionmaker(bind=engine)
 SessionLocal = sessionmaker(bind=engine)
-
 # Check connection
 try:
     with engine.connect() as connection:

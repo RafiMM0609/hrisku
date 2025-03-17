@@ -34,7 +34,7 @@ async def detail_user(
                 User.phone,
                 User.address,
                 User.id,
-            ).filter(User.id_user == id_user)
+            ).filter(User.id_user == id_user, User.isact==True)
         )
         user = db.execute(query).first() 
         id_role = db.execute(
@@ -123,7 +123,7 @@ async def add_user(
     
 async def create_custom_id(
         id: int, 
-        prefix:Optional[str]="U"
+        prefix:Optional[str]="T"
 ) -> str:
     num_digits = len(str(id))
     formatted_id = f"{id:0{num_digits+1}d}"  
@@ -175,7 +175,6 @@ async def edit_user_validator(
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
-            print(result)
 
             if payload.role_id and not result[0][0]:  # Cek role_id
                 errors = "Role not found"
@@ -327,6 +326,7 @@ async def edit_status_user(
             .values(status=False, updated_by=user.id)
         )
         db.commit()
+        return "oke"
     except Exception as e:
         print("Error edit status user: \n", e)
         raise ValueError("Failed edit status user")

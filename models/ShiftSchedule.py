@@ -21,6 +21,7 @@ class ShiftSchedule(Base):
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
     isact = Column(Boolean, default=True)
+    id_shift = Column(String(10), nullable=True)
 
     # Many to Many
     users = relationship("User", back_populates="user_shift", foreign_keys=[emp_id])

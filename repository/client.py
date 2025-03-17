@@ -31,7 +31,7 @@ async def delete_client(
     user=User,
 ):
     try:
-        client = db.execute(select(Client).filter(Client.id == id)).scalar()
+        client = db.execute(select(Client).filter(Client.id_client == id)).scalar()
         if not client:
             raise ValueError("Client not found")
         client.isact = False
@@ -266,22 +266,6 @@ async def edit_client(
             .values(isact=False)
         )
         db.commit()
-        raise ValueError(e)
-async def delete_client(
-    db:Session,
-    user:User,
-    client_id:int
-):
-    try:
-        client = db.execute(select(Client).filter(Client.id_client == client_id)).scalar()
-        if not client:
-            raise ValueError("Client not found")
-        client.isact = False
-        client.updated_by = user.id
-        db.add(client)
-        db.commit()
-        return "oke"
-    except Exception as e:
         raise ValueError(e)
     
 async def list_client(

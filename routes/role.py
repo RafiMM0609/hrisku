@@ -46,12 +46,12 @@ router = APIRouter(tags=["Role"])
     },
 )
 async def list_role_route(
-    # role_id:int,
     page: Optional[int] = 1,
     page_size: Optional[int] = 10,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme),
-):  # <-- Perbaikan di sini
+    src: Optional[str] = None,
+):
     try:
         user = get_user_from_jwt_token(db, token)
         if not user:
@@ -60,7 +60,7 @@ async def list_role_route(
             db=db,
             page_size=page_size,
             page=page,
-            # role_id=role_id,
+            src=src,
         )
         return common_response(
             Ok(

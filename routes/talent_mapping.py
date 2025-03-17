@@ -3,8 +3,8 @@ from email import utils
 from fastapi import (
     APIRouter, 
     Depends, 
+    BackgroundTasks, 
     # Request, 
-    # BackgroundTasks, 
     # Request, 
     # File, 
     # UploadFile
@@ -53,6 +53,7 @@ router = APIRouter(tags=["Talent Mapping"])
 )
 async def add_route(
     payload: RegisTalentRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -67,6 +68,7 @@ async def add_route(
             db=db,
             user=user,
             payload=payload,
+            background_tasks=background_tasks,
         )
         return common_response(Ok(
             message="Success add data"
@@ -130,7 +132,7 @@ async def edit_route(
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized())
-        valid = await TalentRepo.edit_user_validator(db, payload)
+        valid = await TalentRepo.edit_user_validator(db, payload, id)
         if not valid["success"]:
             return common_response(BadRequest(message=valid["errors"]))
         user_data = await TalentRepo.edit_talent(
@@ -140,7 +142,7 @@ async def edit_route(
             payload=payload,
         )
         return common_response(Ok(
-            message="Success add data"
+            message="Success edit data"
             )
         )
     except Exception as e:

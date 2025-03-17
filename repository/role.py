@@ -53,6 +53,7 @@ async def list_role(
     db:Session,
     page_size:int,
     page:int,
+    src:Optional[str]=None,
     # role_id:Optional[int] = None,
 ):
     try:
@@ -64,6 +65,9 @@ async def list_role(
         query_count = (select(func.count(Role.id)).filter(Role.isact==True)
         )
 
+        if src:
+            query = query.filter(Role.name.ilike(f"%{src}%"))
+            query_count = query_count.filter(Role.name.ilike(f"%{src}%"))
         # if role_id:
         #     query = query.filter(Role.id==role_id)
         #     query_count = query_count.filter(Role.id==role_id)

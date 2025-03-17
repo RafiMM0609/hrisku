@@ -10,6 +10,7 @@ from models.Role import Role
 from models.ShiftSchedule import ShiftSchedule
 from models.Client import Client
 from models.ClientOutlet import ClientOutlet
+from models import SessionLocal
 from datetime import datetime, timedelta
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
@@ -59,6 +60,7 @@ async def add_user_validator(db: Session, payload: RegisTalentRequest):
 async def add_talent(
     db: Session,
     user:User,
+    background_tasks:any,
     payload: RegisTalentRequest,
     role_id: int = 1,
 ):
@@ -86,8 +88,15 @@ async def add_talent(
         )
         db.commit()
         if isinstance(payload.shift, (list, tuple)):
-            await mapping_schedule(
-                db, 
+            # await mapping_schedule(
+            #     db, 
+            #     new_user.client_id,
+            #     new_user.id, 
+            #     payload.shift, 
+            #     payload.workdays
+            # )
+            background_tasks.add_task(
+                add_mapping_schedule,
                 new_user.client_id,
                 new_user.id, 
                 payload.shift, 
@@ -96,6 +105,35 @@ async def add_talent(
     except Exception as e:
         print("Error regis talent : \n", e)
         raise ValueError("Failed regis talent")
+
+async def add_mapping_schedule(client_id, emp_id, shift, workdays):
+    db = SessionLocal()  # Ambil koneksi dari pool
+    try:
+        for item in shift:
+            new_shift= ShiftSchedule(
+                emp_id=emp_id,
+                client_id=client_id,
+                workdays=workdays,
+                time_start=datetime.strptime(item.start_time, "%H:%M").time(),
+                time_end=datetime.strptime(item.end_time, "%H:%M").time(),
+                day=item.day,
+                created_at=datetime.now(tz=timezone(TZ)),
+            )
+            db.add(new_shift)
+            db.commit()
+            db.refresh(new_shift)
+            db.execute(
+            update(ShiftSchedule).where(
+                ShiftSchedule.id == new_shift.id)
+                .values(id_shift=await create_custom_id(new_shift.id))
+            )
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error in background add mapping task: {e}")
+    finally:
+        db.close()  # Jangan lupa close agar tidak bocor
+
 
 async def mapping_schedule(db, client_id, emp_id, data, workdays):
     try:
@@ -117,10 +155,9 @@ async def mapping_schedule(db, client_id, emp_id, data, workdays):
         db.rollback()
         print("Error mapping: \n", e)
         
-
 async def create_custom_id(
         id: int, 
-        prefix:Optional[str]="U"
+        prefix:Optional[str]="T"
 ) -> str:
     num_digits = len(str(id))
     formatted_id = f"{id:0{num_digits+1}d}"  
@@ -135,7 +172,7 @@ async def edit_user_validator(db: Session, payload: EditTalentRequest, id_user:s
             queries.append(select(ClientOutlet.id).filter(ClientOutlet.id == payload.outlet_id, ClientOutlet.client_id==payload.client_id ,ClientOutlet.isact==True).exists())
 
         if payload.email:
-            queries.append(select(User.id).filter(User.email == payload.email, User.id_user==id_user, User.isact==True).exists())
+            queries.append(select(User.id).filter(User.email == payload.email, User.id_user!=id_user, User.isact==True).exists())
 
         if payload.client_id:
             queries.append(select(Client.id).filter(Client.id == payload.client_id, Client.isact==True).exists())
@@ -271,7 +308,7 @@ async def formating_talent(data:List[User]):
         ls_data.append({
             "talend_id": d.id_user,
             "name": d.name,
-            "dob": d.birth_date,
+            "dob": d.birth_date.strftime("%d-%m-%Y") if d.birth_date else None,
             "nik": d.nik,
             "email": d.email,
             "phone": d.phone,

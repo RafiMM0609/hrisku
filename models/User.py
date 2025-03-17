@@ -11,7 +11,7 @@ from models.ShiftSchedule import ShiftSchedule
 class User(Base):
     __tablename__ = "user"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     created_by = Column(String(36), nullable=False)
     updated_by = Column(String(36), nullable=False)
     email = Column(String, unique=True, nullable=False)
@@ -21,8 +21,8 @@ class User(Base):
     phone = Column(String, nullable=False)
     address = Column(String, nullable=False)
     face_id = Column(String, nullable=False)
-    client_id = Column(Integer,ForeignKey("client.id") ,nullable=False)
-    outlet_id = Column(Integer,ForeignKey("client_outlet.id") ,nullable=False)
+    client_id = Column(Integer,ForeignKey("client.id") ,nullable=False, index=True)
+    outlet_id = Column(Integer,ForeignKey("client_outlet.id") ,nullable=False, index=True)
     password = Column(String, nullable=False)
     first_login = Column(String, nullable=False)
     birth_date = Column(String, nullable=False)

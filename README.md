@@ -21,3 +21,10 @@ pip install -r requirements.txt
 ```
 uvicorn main:app
 ```
+
+
+# Notes for server configuration
+- Sesuaikan pool_recycle agar lebih kecil dari wait_timeout.
+```
+SHOW VARIABLES LIKE 'wait_timeout';
+```

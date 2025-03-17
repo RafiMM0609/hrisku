@@ -18,6 +18,38 @@ from schemas.talent_mapping import (
 import os
 import asyncio
 
+async def data_talent_information(
+    db:Session,
+    talent_id:str,
+):
+    try:
+        query = select(User).filter(User.id_user == talent_id).limit(1)
+        data = db.execute(query).scalar_one_or_none()
+        
+        if not data:
+            raise ValueError("User not found")
+    
+        return await formating_talent_information(data)
+    except Exception as e:
+        print("Error data talent info: \n",e)
+        raise ValueError("Failed get data detail informatoin")
+
+async def formating_talent_information(d:User):
+    return {
+        "name": d.name,
+        "role":{
+            "id": d.roles[0].id if d.roles[0] else None,
+            "name": d.roles[0].name if d.roles[0] else None
+        },
+        "talent_id": d.id_user,
+        "dob": d.birth_date.strftime("%d-%m-%Y") if d.birth_date else None,
+        "phone": d.phone,
+        "address": d.address,
+        "nik": d.nik,
+        "email": d.email,
+        "photo": d.photo
+    }
+
 async def list_talent(
     db: Session,
     page: int,

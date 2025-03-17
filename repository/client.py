@@ -364,12 +364,14 @@ async def formatin_detail(data:Client):
             {
             "id": x.id,
             "name": x.name,
+            "amount":x.amount,
         } for x in data.bpjs
         ] if data.bpjs else [],
         "allowences":[
             {
             "id": x.id,
             "name": x.name,
+            "amount": x.amount,
         } for x in data.allowances
         ] if data.allowances else [],
         "cs_person":data.cs_person,

@@ -320,11 +320,18 @@ async def edit_status_user(
     id_user:str
 ):
     try:
-        db.execute(
-            update(User)
-            .where(User.id_user==id_user)
-            .values(status=False, updated_by=user.id)
-        )
+        exist_data = db.execute(
+            select(User)
+            .filter(User.id_user==id_user, User.isact==True)
+            .limit(1)
+        ).scalar()
+        exist_data.status = not exist_data.status
+        # db.execute(
+        #     update(User)
+        #     .where(User.id_user==id_user)
+        #     .values(status=False, updated_by=user.id)
+        # )
+        db.add(exist_data)
         db.commit()
         return "oke"
     except Exception as e:

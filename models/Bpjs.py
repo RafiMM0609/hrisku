@@ -5,9 +5,9 @@ from sqlalchemy import (
     DateTime, 
     ForeignKey, 
     Boolean, 
-    DECIMAL, 
     Date,
-    Float
+    Float,
+    Numeric
 )
 from sqlalchemy.orm import relationship
 from models import Base
@@ -21,7 +21,7 @@ class Bpjs(Base):
     name = Column(String, nullable=True)
     company_contribution = Column(Float, nullable=True)
     employee_contribution = Column(Float, nullable=True)
-    amount = Column(Float, nullable=True)
+    amount = Column(Numeric(10, 6), nullable=True)
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)
     created_at = Column(DateTime(timezone=True))

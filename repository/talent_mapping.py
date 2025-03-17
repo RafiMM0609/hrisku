@@ -353,7 +353,7 @@ async def formating_detail(data: User):
         "workdays": data.user_shift[0].workdays if data.user_shift else None,
         "shift": [
             {
-                "shift_id": "S01",
+                "shift_id": x.id_shift,
                 "day": x.day,
                 "start_time": x.time_start.strftime("%H:%M"),
                 "end_time": x.time_end.strftime("%H:%M")

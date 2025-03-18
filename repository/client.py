@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from math import ceil
 import secrets
 from sqlalchemy import select, func, distinct, update
@@ -12,6 +12,7 @@ from models.User import User
 from models.ClientOutlet import ClientOutlet
 from models.Bpjs import Bpjs
 from models.Allowances import Allowances
+from models import SessionLocal
 from datetime import datetime, timedelta
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
@@ -21,7 +22,8 @@ import asyncio
 from math import ceil
 from schemas.client import (
     AddClientRequest,
-    EditClientRequest
+    EditClientRequest,
+    EditOutletRequest
 )
 
 
@@ -47,6 +49,7 @@ async def add_client(
     db:Session,
     user:User,
     payload:AddClientRequest,
+    background_tasks:any,
 )->Client:
     try:
         due_date_payment = datetime.strptime(payload.payment_date, "%d-%m-%Y").date()
@@ -75,15 +78,21 @@ async def add_client(
         ls_bpjs = []
         ls_allowances = []
         ls_outlet = []
-        for data in payload.outlet:
-            new_outlet = ClientOutlet(
-                client_id = new_client.id,
-                name = data.name,
-                longitude = data.longitude,
-                latitude = data.latitude,
-                address = data.address
+        if isinstance(payload.outlet, (list, tuple)):
+            background_tasks.add_task(
+                add_outlet,
+                payload.outlet,
+                new_client.id
             )
-            ls_outlet.append(new_outlet)
+        # for data in payload.outlet:
+        #     new_outlet = ClientOutlet(
+        #         client_id = new_client.id,
+        #         name = data.name,
+        #         longitude = data.longitude,
+        #         latitude = data.latitude,
+        #         address = data.address
+        #     )
+        #     ls_outlet.append(new_outlet)
         if isinstance(payload.bpjs, (list, tuple)):
             for data in payload.bpjs:
                 new_bpjs = Bpjs(
@@ -123,6 +132,33 @@ async def create_custom_id(
     num_digits = len(str(id))
     formatted_id = f"{id:0{num_digits+1}d}"  
     return prefix + formatted_id
+
+async def add_outlet(outlets:List[ClientOutlet], id_client):
+    db = SessionLocal()
+    try:
+        for data in outlets:
+            new_outlet = ClientOutlet(
+                client_id = id_client,
+                name = data.name,
+                longitude = data.longitude,
+                latitude = data.latitude,
+                address = data.address
+            )
+            db.add(new_outlet)
+            db.commit()
+            db.refresh(new_outlet)
+            db.execute(
+            update(ClientOutlet).where(
+                ClientOutlet.id == new_outlet.id)
+                .values(id_shift=await create_custom_id(id=new_outlet.id, prefix='O'))
+            )
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error in background add outlets task: {e}")
+    finally:
+        db.close()
+
 async def add_validator(db: Session, payload: AddClientRequest):
     try:
         errors = None
@@ -349,12 +385,17 @@ async def detail_client(
         raise ValueError("Failed get detail client")
 async def formatin_detail(data:Client):
     obj = {
+        "id": data.id,
         "name": data.name,
         "address": data.address,
         "outlet":[
             {
-            "id": x.id,
+            "id_outlet": x.id_outlet,
             "name": x.name,
+            "address": x.address,
+            "total_active": 10, # hardcode
+            "latitude": x.latitude,
+            "longitude": x.longitude
         } for x in data.outlets
         ] if data.outlets else [],
         "basic_salary": data.basic_salary,
@@ -379,3 +420,56 @@ async def formatin_detail(data:Client):
         "cs_email":data.cs_email
     }
     return obj
+
+
+async def edit_outlet(
+    db:Session,
+    user:User,
+    id_outlet:str,
+    payload:EditOutletRequest,
+):
+    try:
+        exist_data=db.execute(
+            select(ClientOutlet)
+            .filter(ClientOutlet.id_outlet==id_outlet)
+            .limit(1)
+        ).scalar()
+        if not exist_data:
+            raise ValueError("Data not found")
+        exist_data.updated_at=datetime.now(tz=timezone(TZ))
+        exist_data.updated_by=user.id
+        exist_data.name=payload.name
+        exist_data.address=payload.address
+        exist_data.latitude=payload.latitude
+        exist_data.longitude=payload.longitude
+        # exist_data.total_active=payload.total_active
+        db.add(exist_data)
+        db.commit()
+        return "Oke"
+    except Exception as e:
+        print("Error edit outlet", e)
+        raise ValueError("Failed edit data")
+    
+async def delete_outlet(
+    db:Session,
+    user:User,
+    id_outlet:str,
+):
+    try:
+        exist_data=db.execute(
+            select(ClientOutlet)
+            .filter(ClientOutlet.id_outlet==id_outlet)
+            .limit(1)
+        ).scalar()
+        if not exist_data:
+            raise ValueError("Data not found")
+        exist_data.updated_at=datetime.now(tz=timezone(TZ))
+        exist_data.updated_by=user.id
+        exist_data.isact=not exist_data.isact
+        # exist_data.total_active=payload.total_active
+        db.add(exist_data)
+        db.commit()
+        return "Oke"
+    except Exception as e:
+        print("Error edit outlet", e)
+        raise ValueError("Failed edit data")

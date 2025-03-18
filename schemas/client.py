@@ -11,6 +11,14 @@ class Outlet(BaseModel):
     longitude:float
     address:str
 
+class OutletGet(BaseModel):
+    id_outlet:str
+    name:str
+    address:str
+    total_active:int
+    latitude:float
+    longitude:float
+
 class MetaResponse(BaseModel):
     count:int
     page_count:int
@@ -95,11 +103,12 @@ class ListClientBillingResponse(BaseModel):
     message: str
 
 class DetailClient(BaseModel):
+    id_outlet:str
     name: str
     address: str
-    outlet: List[Outlet]
-    basic_salary: str
-    agency_fee: str
+    outlet: List[OutletGet]
+    basic_salary: float
+    agency_fee: float
     payment_date:str = "01-12-2999"
     bpjs: Optional[List[AddBpjsRequest]] = None
     allowences: Optional[List[AddAllowencesRequest]] = None
@@ -113,3 +122,12 @@ class DetailClientResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class EditOutletRequest(BaseModel):
+    name:Optional[str]
+    total_active:Optional[str]
+    address:Optional[str]
+    latitude:Optional[float]
+    longitude:Optional[float]
+
+

@@ -84,7 +84,7 @@ async def list_role_route(
     },
 )
 async def list_role_route(
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     src:Optional[str] = None,
     token: str = Depends(oauth2_scheme),
 ):
@@ -100,6 +100,76 @@ async def list_role_route(
             Ok(
                 message="Succes get data option",
                 data=role_data
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.get("/{id_role}",
+    responses={
+        "200": {"model": ListRoleResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_role_route(
+    id_role:int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        role_data= await RoleRepo.detail_role(
+            db=db,
+            id_role=id_role,
+        )
+        return common_response(
+            Ok(
+                message="Succes get data option",
+                data=role_data
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/users/{id_role}",
+    responses={
+        "200": {"model": ListRoleResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_role_route(
+    id_role:int,
+    page:Optional[int]=1,
+    page_size:Optional[int]=10,
+    src:Optional[str]=None,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        role_data, num_data, num_page= await RoleRepo.list_user(
+            db=db,
+            page=page,
+            page_size=page_size,
+            src=src,
+            id_role=id_role,
+        )
+        return common_response(
+            Ok(
+            data=role_data,
+            meta={
+                "count": num_data,
+                "page_count": num_page,
+                "page_size": page_size,
+                "page": page,
+            },
+            message="Success get data"
             )
         )
     except Exception as e:

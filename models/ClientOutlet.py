@@ -34,6 +34,7 @@ class ClientOutlet(Base):
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
     isact = Column(Boolean, default=True)
+    id_outlet = Column(String(10), nullable=True)
 
     client = relationship("Client", back_populates="outlets")
     outlet_user = relationship("User", back_populates="user_outlet", foreign_keys=[User.outlet_id])

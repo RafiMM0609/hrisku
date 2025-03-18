@@ -39,3 +39,26 @@ class CreateSuccessResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class ListAllUser(BaseModel):
+    id_user: int
+    name: str
+    email: str
+    phone: str
+    address: str
+    client: Organization
+    role: Organization
+    status: bool
+
+class ListUserResponse(BaseModel):
+    meta: MetaResponse
+    data: ListAllUser
+    status: str
+    code: int
+    message: str
+
+class DetailRole(BaseModel):
+    id_role: int
+    role_name:str
+    permision: DetailPermission
+    total_user:int

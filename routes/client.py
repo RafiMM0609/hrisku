@@ -45,6 +45,7 @@ router = APIRouter(tags=["Client"])
 )
 async def add_client_route(
     payload: AddClientRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):  
@@ -59,6 +60,7 @@ async def add_client_route(
             db=db,
             user=user,
             payload=payload,
+            background_tasks=background_tasks,
         )
         return common_response(
             CudResponse(

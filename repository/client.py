@@ -51,6 +51,7 @@ async def add_client(
     try:
         due_date_payment = datetime.strptime(payload.payment_date, "%d-%m-%Y").date()
         new_client = Client(
+            photo=payload.photo,
             name=payload.name,
             address=payload.address,
             fee_agency=payload.agency_fee,
@@ -196,6 +197,7 @@ async def edit_client(
         client = db.execute(select(Client).filter(Client.id_client == client_id)).scalar()
         if not client:
             raise ValueError("Client not found")
+        client.photo = payload.photo
         client.name = payload.name
         client.address = payload.address
         client.fee_agency = payload.agency_fee

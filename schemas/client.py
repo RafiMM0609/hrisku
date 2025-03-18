@@ -28,6 +28,7 @@ class AddAllowencesRequest(BaseModel):
     amount: float
 
 class AddClientRequest(BaseModel):
+    photo:Optional[str]
     name: str
     address: str
     outlet: List[Outlet]
@@ -41,6 +42,7 @@ class AddClientRequest(BaseModel):
     cs_email: Optional[str] = None
 
 class EditClientRequest(BaseModel):
+    photo:Optional[str]
     name: str
     address: str
     outlet: List[Outlet]
@@ -95,6 +97,7 @@ class ListClientBillingResponse(BaseModel):
     message: str
 
 class DetailClient(BaseModel):
+    photo:str
     name: str
     address: str
     outlet: List[Outlet]

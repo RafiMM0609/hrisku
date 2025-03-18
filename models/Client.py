@@ -37,6 +37,7 @@ class Client(Base):
     payment_status = Column(Boolean, default=True)
     due_date_payment = Column(Date, nullable=True)
     id_client = Column(String, nullable=True)
+    photo = Column(String, nullable=False, index=True)
     
     # Relation
     user_client = relationship("User", back_populates="client_user")

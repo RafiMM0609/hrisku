@@ -17,36 +17,36 @@ from fastapi import UploadFile
 from schemas.auth import (
     MenuDict
 )
-import numpy as np
-from PIL import Image
+# import numpy as np
+# from PIL import Image
 import io
 import asyncio
 import os
 import requests
-os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
-import cv2
+# os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
+# os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
+# import cv2
 from schemas.auth import FirstLoginUserRequest
 
-backends = [
-  'opencv', 
-  'ssd', 
-  'dlib', 
-  'mtcnn', 
-  'fastmtcnn',
-  'retinaface', 
-  'mediapipe',
-  'yolov8',
-  'yunet',
-  'centerface',
-]
+# backends = [
+#   'opencv', 
+#   'ssd', 
+#   'dlib', 
+#   'mtcnn', 
+#   'fastmtcnn',
+#   'retinaface', 
+#   'mediapipe',
+#   'yolov8',
+#   'yunet',
+#   'centerface',
+# ]
 
-alignment_modes = [True, False]
-async def resize_image(image_path, size=(224, 224)):
-    print("ini image_path : \n",image_path)
-    img = cv2.imread(image_path)
-    resized_img = cv2.resize(img, size)
-    return resized_img
+# alignment_modes = [True, False]
+# async def resize_image(image_path, size=(224, 224)):
+#     print("ini image_path : \n",image_path)
+#     img = cv2.imread(image_path)
+#     resized_img = cv2.resize(img, size)
+#     return resized_img
 def expand_menu_tree_with_permissions(
     db: Session, root_menu: List[Menu], permissions: List[Permission]
 ) -> List[MenuDict]:
@@ -128,33 +128,33 @@ async def regis_face(
     db: Session,
 ):
     try:
-        from deepface import DeepFace
-        # Membaca gambar langsung dari request tanpa menyimpannya
-        image_bytes = await upload_file_request.read()
+        # from deepface import DeepFace
+        # # Membaca gambar langsung dari request tanpa menyimpannya
+        # image_bytes = await upload_file_request.read()
         
-        # Mengubah gambar menjadi format NumPy agar bisa digunakan oleh DeepFace
-        image = Image.open(io.BytesIO(image_bytes))  # Menggunakan PIL untuk membuka gambar
-        image_np = np.array(image)  # Konversi ke array NumPy
+        # # Mengubah gambar menjadi format NumPy agar bisa digunakan oleh DeepFace
+        # image = Image.open(io.BytesIO(image_bytes))  # Menggunakan PIL untuk membuka gambar
+        # image_np = np.array(image)  # Konversi ke array NumPy
         
-        # Jika gambar memiliki alpha channel (RGBA), konversi ke RGB
-        if image_np.shape[-1] == 4:
-            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
+        # # Jika gambar memiliki alpha channel (RGBA), konversi ke RGB
+        # if image_np.shape[-1] == 4:
+        #     image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
 
-        # Face detection dengan DeepFace
-        loop = asyncio.get_running_loop()
-        objs = await loop.run_in_executor(None, DeepFace.analyze, image_np, ['age'])
+        # # Face detection dengan DeepFace
+        # loop = asyncio.get_running_loop()
+        # objs = await loop.run_in_executor(None, DeepFace.analyze, image_np, ['age'])
 
-        print(objs)
+        # print(objs)
 
-        # Setelah validasi, unggah gambar ke MinIO atau local storage
-        now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        file_extension = os.path.splitext(upload_file_request.filename)[1]
-        path = await upload_file(upload_file_request, f"/face/face-{now.replace(' ', '_')}{file_extension}")
+        # # Setelah validasi, unggah gambar ke MinIO atau local storage
+        # now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        # file_extension = os.path.splitext(upload_file_request.filename)[1]
+        # path = await upload_file(upload_file_request, f"/face/face-{now.replace(' ', '_')}{file_extension}")
 
-        # return {"face_data": objs, "face_path": path}
-        user.face_id = path
-        db.add(user)
-        db.commit()
+        # # return {"face_data": objs, "face_path": path}
+        # user.face_id = path
+        # db.add(user)
+        # db.commit()
         return "Oke"
     except Exception as e:
         print(f"Error regis face: {e}")
@@ -220,27 +220,28 @@ async def face(
     user: User,
     db: Session,
 ):
-    from deepface import DeepFace
-    # file_extension = os.path.splitext(upload_file.filename)[1]
-    # now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-    # path = await upload_file_to_local(
-    #         upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
-    #     )
-    resized_img1 = await get_numpy_from_upload(upload_file)
-    # resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
-    # resized_img2 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{user.face_id}")
-    # resized_img1 = resize_image(f"{LOCAL_PATH}{path}")
-    resized_img2 = await resize_image(f"{LOCAL_PATH}{user.face_id}")
+    # from deepface import DeepFace
+    # # file_extension = os.path.splitext(upload_file.filename)[1]
+    # # now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+    # # path = await upload_file_to_local(
+    # #         upload_file=upload_file, folder=LOCAL_PATH, path=f"/tmp/face-{user.name}{now.replace(' ','_')}{file_extension}"
+    # #     )
+    # resized_img1 = await get_numpy_from_upload(upload_file)
+    # # resized_img1 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{path}")
+    # # resized_img2 = await loop.run_in_executor(None, resize_image, f"{LOCAL_PATH}{user.face_id}")
+    # # resized_img1 = resize_image(f"{LOCAL_PATH}{path}")
+    # resized_img2 = await resize_image(f"{LOCAL_PATH}{user.face_id}")
                                             
-    #face verification
-    obj = DeepFace.verify(
-    img1_path = resized_img1, 
-    img2_path = resized_img2, 
-    detector_backend = backends[0],
-    align = alignment_modes[0],
-    )
-    # delete_file_in_local(folder=LOCAL_PATH, path=path)
-    return obj['verified']
+    # #face verification
+    # obj = DeepFace.verify(
+    # img1_path = resized_img1, 
+    # img2_path = resized_img2, 
+    # detector_backend = backends[0],
+    # align = alignment_modes[0],
+    # )
+    # # delete_file_in_local(folder=LOCAL_PATH, path=path)
+    # return obj['verified']
+    return "Oke"
 
 
 async def check_user_status_by_email(

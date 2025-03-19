@@ -12,7 +12,10 @@ from pytz import timezone
 from sqlalchemy.orm import relationship
 from models import Base
 from models.ClientPayment import ClientPayment
-
+from models.ClientOutlet import ClientOutlet
+from models.Bpjs import Bpjs
+from models.Allowances import Allowances
+from models.ClientPayment import ClientPayment
 
 class Client(Base):
     __tablename__ = "client"

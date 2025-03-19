@@ -10,6 +10,12 @@ class Outlet(BaseModel):
     latitude:float
     longitude:float
     address:str
+class OutletEdit(BaseModel):
+    id_outlet:str
+    name:str
+    latitude:float
+    longitude:float
+    address:str
 
 class OutletGet(BaseModel):
     id_outlet:str
@@ -36,7 +42,7 @@ class AddAllowencesRequest(BaseModel):
     amount: float
 
 class AddClientRequest(BaseModel):
-    photo:Optional[str]
+    photo:Optional[str]=None
     name: str
     address: str
     outlet: List[Outlet]
@@ -50,12 +56,12 @@ class AddClientRequest(BaseModel):
     cs_email: Optional[str] = None
 
 class EditClientRequest(BaseModel):
-    photo:Optional[str]
+    photo:Optional[str]=None
     name: str
     address: str
-    outlet: List[Outlet]
-    basic_salary: str
-    agency_fee: str
+    outlet: List[OutletEdit]
+    basic_salary: float
+    agency_fee: float
     payment_date:str = "01-12-2999"
     bpjs: Optional[List[AddBpjsRequest]] = None
     allowences: Optional[List[AddAllowencesRequest]] = None
@@ -127,9 +133,9 @@ class DetailClientResponse(BaseModel):
     message: str
 
 class EditOutletRequest(BaseModel):
-    name:Optional[str]
-    total_active:Optional[str]
-    address:Optional[str]
+    name:Optional[str]=None
+    total_active:Optional[str]=None
+    address:Optional[str]=None
     latitude:Optional[float]
     longitude:Optional[float]
 

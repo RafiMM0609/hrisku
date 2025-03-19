@@ -1,14 +1,17 @@
 from fastapi import FastAPI, Request
-import logging
+# import logging
 import time
 # import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from settings import (
-    ENVIRONTMENT
+    ENVIRONTMENT,
+    SENTRY_DSN,
+    SENTRY_TRACES_SAMPLE_RATES,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+import sentry_sdk
 
 from routes.auth import router as AuthRouter
 from routes.user_management import router as UserRouter
@@ -18,6 +21,15 @@ from routes.clientbilling import router as ClientBillingRouter
 from routes.file import router as FileRouter
 from routes.talent_mapping import router as TalentMappingRouter
 from routes.talent_monitor import router as TalentMonitorRouter
+
+if SENTRY_DSN != None:  # NOQA
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        # We recommend adjusting this value in production,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATES,
+    )
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -79,16 +91,16 @@ async def read_root():  # <-- Perbaikan di sini
         return {"error": str(e)}
 
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = time.time()
-    logging.info(f"Request: {request.method} {request.url}")
-    response = await call_next(request)
-    duration = time.time() - start_time
-    logging.info(f"Response: {response.status_code} in {duration:.2f} seconds")
-    return response
+# @app.middleware("http")
+# async def log_requests(request: Request, call_next):
+#     start_time = time.time()
+#     logging.info(f"Request: {request.method} {request.url}")
+#     response = await call_next(request)
+#     duration = time.time() - start_time
+#     logging.info(f"Response: {response.status_code} in {duration:.2f} seconds")
+#     return response
 # @app.on_event("startup")
 # async def startup_event():
 #     app.state.db_client = await get_db()

@@ -6,7 +6,7 @@ class CreateUserRequest(BaseModel):
     email: str
     name: str
     phone: str
-    face_id: Optional[str]
+    face_id: Optional[str]=None
     # password: Optional[str]
 class MenuDict(TypedDict):
     id: int
@@ -42,7 +42,7 @@ class RegisRequest(BaseModel):
     email: str
     name: str
     password: str
-    photo_user: Optional[str]
+    photo_user: Optional[str]=None
     photo_face: str
     role_id: Optional[int]
 class MeSuccessResponse(BaseModel):
@@ -66,9 +66,9 @@ class MeSuccessResponse(BaseModel):
 class ChangeUserProfileRequest(BaseModel):
     username: str
     email: str
-    NIK: Optional[str]
-    signature_path: Optional[str]
-    telegram: Optional[str]
+    NIK: Optional[str]=None
+    signature_path: Optional[str]=None
+    telegram: Optional[str]=None
 
 
 class LogoutSuccessResponse(BaseModel):
@@ -104,7 +104,7 @@ class UpdateProfileRequest(BaseModel):
     name: str
     email: str
     username: str
-    photo_user: Optional[str]
+    photo_user: Optional[str]=None
 
 
 class ForgotPasswordChangePasswordResponse(BaseModel):

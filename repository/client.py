@@ -151,7 +151,7 @@ async def add_outlet(outlets:List[ClientOutlet], id_client):
             db.execute(
             update(ClientOutlet).where(
                 ClientOutlet.id == new_outlet.id)
-                .values(id_shift=await create_custom_id(id=new_outlet.id, prefix='O'))
+                .values(id_outlet=await create_custom_id(id=new_outlet.id, prefix='O'))
             )
             db.commit()
     except Exception as e:

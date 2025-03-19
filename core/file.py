@@ -10,7 +10,7 @@ from fastapi import BackgroundTasks, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from minio import Minio, S3Error
 from minio.datatypes import Object
-from core.img_converter import img_to_base64
+# from core.img_converter import img_to_base64
 from settings import (
     FILE_STORAGE_ADAPTER,
     LOCAL_PATH,

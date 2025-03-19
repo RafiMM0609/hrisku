@@ -11,7 +11,7 @@ class Outlet(BaseModel):
     longitude:float
     address:str
 class OutletEdit(BaseModel):
-    id_outlet:str
+    id_outlet:Optional[str]=None
     name:str
     latitude:float
     longitude:float
@@ -37,7 +37,15 @@ class CreateSuccessResponse(BaseModel):
 class AddBpjsRequest(BaseModel):
     name: str
     amount: float
+class EditBpjsRequest(BaseModel):
+    id:Optional[int]=None
+    name: str
+    amount: float
 class AddAllowencesRequest(BaseModel):
+    name: str
+    amount: float
+class EditAllowencesRequest(BaseModel):
+    id:Optional[int]=None
     name: str
     amount: float
 
@@ -63,8 +71,8 @@ class EditClientRequest(BaseModel):
     basic_salary: float
     agency_fee: float
     payment_date:str = "01-12-2999"
-    bpjs: Optional[List[AddBpjsRequest]] = None
-    allowences: Optional[List[AddAllowencesRequest]] = None
+    bpjs: Optional[List[EditBpjsRequest]] = None
+    allowences: Optional[List[EditAllowencesRequest]] = None
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None

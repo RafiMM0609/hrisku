@@ -53,6 +53,7 @@ class ListUserResponse(BaseModel):
     message: str
 
 class DetailUser(BaseModel):
+    photo:str
     user_id:str
     name:str
     email:str

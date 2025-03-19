@@ -4,7 +4,7 @@ from math import ceil
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local
+from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
 from models.User import User
 from models.Role import Role
 from models.ShiftSchedule import ShiftSchedule
@@ -19,6 +19,7 @@ from schemas.talent_mapping import (
     ListAllUser,
     RegisTalentRequest,
     EditTalentRequest,
+    ShiftEdit,
 )
 import os
 import asyncio
@@ -135,7 +136,7 @@ async def add_mapping_schedule(client_id, emp_id, shift, workdays):
         db.close()  # Jangan lupa close agar tidak bocor
 
 
-async def mapping_schedule(db, client_id, emp_id, data, workdays):
+async def mapping_schedule_bak(db, client_id, emp_id, data, workdays):
     try:
         ls_shift = []
         for item in data:
@@ -201,6 +202,7 @@ async def edit_talent(
     db: Session,
     id_user: str,
     user:User,
+    background_tasks:any,
     payload: RegisTalentRequest,
     role_id: int = 1,
 ):
@@ -225,22 +227,74 @@ async def edit_talent(
         db.refresh(user_exist)
         db.commit()
         if isinstance(payload.shift, (list, tuple)):
-            db.execute(
-                update(ShiftSchedule)
-                .where(ShiftSchedule.emp_id==user_exist.id)
-                .values(isact=False)
-            )
-            db.commit()
-            await mapping_schedule(
-                db, 
+            background_tasks.add_task(
+                edit_schedule,
                 user_exist.client_id,
-                user_exist.id, 
-                payload.shift, 
-                payload.workdays
+                user_exist.id,
+                payload.shift,
+                payload.workdays,
+                user.id
             )
+            # db.execute(
+            #     update(ShiftSchedule)
+            #     .where(ShiftSchedule.emp_id==user_exist.id)
+            #     .values(isact=False)
+            # )
+            # db.commit()
+            # await mapping_schedule(
+            #     db, 
+            #     user_exist.client_id,
+            #     user_exist.id, 
+            #     payload.shift, 
+            #     payload.workdays
+            # )
     except Exception as e:
         print("Error regis talent : \n", e)
         raise ValueError("Failed regis talent")
+    
+async def edit_schedule(client_id, emp_id, shift:List[ShiftEdit], workdays, user_id):
+    db = SessionLocal()  # Ambil koneksi dari pool
+    db.execute(
+        update(ShiftSchedule)
+        .where(ShiftSchedule.emp_id==emp_id)
+        .values(isact=False)
+    )
+    db.commit()
+    try:
+        for d in shift:
+            if d.id_shift == None:
+                new_shift= ShiftSchedule(
+                    emp_id=emp_id,
+                    client_id=client_id,
+                    workdays=workdays,
+                    time_start=datetime.strptime(d.start_time, "%H:%M").time(),
+                    time_end=datetime.strptime(d.end_time, "%H:%M").time(),
+                    day=d.day,
+                    created_at=datetime.now(tz=timezone(TZ)),
+                )
+                db.add(new_shift)
+                db.commit()
+                db.refresh(new_shift)
+                db.execute(
+                update(ShiftSchedule).where(
+                    ShiftSchedule.id == new_shift.id)
+                    .values(id_shift=await create_custom_id(new_shift.id))
+                )
+                db.commit()
+            else: 
+                exist_data = db.execute(
+                    select(ShiftSchedule)
+                    .filter(ShiftSchedule.id_shift==d.id_shift)
+                ).scalar()
+                exist_data.updated_by=user_id
+                exist_data.isact=True
+                exist_data.day=d.day
+                exist_data.time_start=d.start_time
+                exist_data.time_end=d.end_time
+
+        return "oke"                
+    except Exception as e:
+        print("Error edit outlet: \n", e)
 
 async def list_talent(
     db: Session,
@@ -262,6 +316,7 @@ async def list_talent(
             User.phone,
             User.address,
             User.isact,
+            User.photo
             )
             .filter(User.isact == True))
 
@@ -307,6 +362,7 @@ async def formating_talent(data:List[User]):
     for d in data:
         ls_data.append({
             "talend_id": d.id_user,
+            "photo": generate_link_download(d.photo),
             "name": d.name,
             "dob": d.birth_date.strftime("%d-%m-%Y") if d.birth_date else None,
             "nik": d.nik,
@@ -336,6 +392,7 @@ async def detail_talent_mapping(
 async def formating_detail(data: User):
     return {
         "talent_id": data.id_user,
+        "photo": data.photo,
         "name": data.name,
         "dob": data.birth_date.strftime("%d-%m-%Y") if data.birth_date else None,
         "nik": data.nik,

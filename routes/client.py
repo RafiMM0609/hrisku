@@ -79,6 +79,7 @@ async def add_client_route(
 async def edit_client_route(
     id:str,
     payload: EditClientRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):  
@@ -86,7 +87,7 @@ async def edit_client_route(
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized())
-        valid = await ClientRepo.edit_validator(db, payload)
+        valid = await ClientRepo.edit_validator(db=db, payload=payload, id=id)
         if not valid["success"]:
             return common_response(BadRequest(message=valid["errors"]))
         data = await ClientRepo.edit_client(
@@ -94,6 +95,7 @@ async def edit_client_route(
             db=db,
             user=user,
             payload=payload,
+            background_tasks=background_tasks,
         )
         return common_response(
             CudResponse(

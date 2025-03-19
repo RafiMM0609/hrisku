@@ -4,7 +4,7 @@ import secrets
 from sqlalchemy import select, func, distinct, update
 from sqlalchemy.orm import Session
 from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local
+from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
 from models.Role import Role
 from models.Module import Module
 from models.Client import Client
@@ -190,7 +190,7 @@ async def add_validator(db: Session, payload: AddClientRequest):
     except Exception as e:
         print(f"Validation error: {e}")
 
-async def edit_validator(db: Session, payload: AddClientRequest, id:int):
+async def edit_validator(db: Session, payload: AddClientRequest, id:str):
     try:
         errors = None
         queries = []
@@ -199,22 +199,22 @@ async def edit_validator(db: Session, payload: AddClientRequest, id:int):
         #     queries.append(select(Client.id).filter(Client.id == payload.role_id).exists())
 
         if payload.name:
-            queries.append(select(Client.id).filter(Client.id != id, Client.name == payload.name, Client.isact==True).exists())
+            queries.append(select(Client.id).filter(Client.id_client != id, Client.name == payload.name, Client.isact==True).exists())
 
         if payload.cs_email:
-            queries.append(select(Client.cs_email).filter(Client.id != id, Client.cs_email == payload.cs_email, Client.isact==True).exists())
+            queries.append(select(Client.cs_email).filter(Client.id_client != id, Client.cs_email == payload.cs_email, Client.isact==True).exists())
 
         if payload.cs_number:
-            queries.append(select(Client.cs_number).filter(Client.id != id, Client.cs_number == payload.cs_email, Client.isact==True).exists())
+            queries.append(select(Client.cs_number).filter(Client.id_client != id, Client.cs_number == payload.cs_email, Client.isact==True).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
 
-            if payload.role_id and result[0][0]:
+            if payload.name and result[0][0]:
                 errors = "Name already exist"
-            if payload.role_id and result[0][1]:
+            if payload.cs_email and result[0][1]:
                 errors = "CS Email already used"
-            if payload.role_id and result[0][2]:
+            if payload.cs_number and result[0][2]:
                 errors = "CS Phone number already used"
         if errors:
             return {"success": False, "errors": errors}
@@ -227,74 +227,46 @@ async def edit_client(
     db:Session,
     user:User,
     payload:EditClientRequest,
-    client_id:int,
+    background_tasks:any,
+    client_id:str,
 )->Client:
     try:
         client = db.execute(select(Client).filter(Client.id_client == client_id)).scalar()
         if not client:
             raise ValueError("Client not found")
+        due_date_payment = datetime.strptime(payload.payment_date, "%d-%m-%Y").date()
         client.photo = payload.photo
         client.name = payload.name
         client.address = payload.address
         client.fee_agency = payload.agency_fee
-        client.due_date_payment = payload.payment_date
+        client.due_date_payment = due_date_payment
         client.cs_person = payload.cs_person
         client.cs_number = payload.cs_number
         client.cs_email = payload.cs_email
         client.updated_by = user.id
         db.add(client)
         db.commit()
-        ls_bpjs = []
-        ls_allowances = []
-        ls_outlet = []
         if isinstance(payload.outlet, (list, tuple)):
-            db.execute(
-                update(ClientOutlet)
-                .where(ClientOutlet.client_id==client.id)
-                .values(isact=False)
+            background_tasks.add_task(
+                edit_outlet,
+                payload.outlet,
+                client.id,
             )
-            db.commit()
-            for data in payload.outlet:
-                new_outlet = ClientOutlet(
-                    client_id = client.id,
-                    name = data.name,
-                    longitude = data.longitude,
-                    latitude = data.latitude,
-                    address = data.address
-                )
-                ls_outlet.append(new_outlet)
         if isinstance(payload.bpjs, (list, tuple)):
-            db.execute(
-                update(Bpjs)
-                .where(Bpjs.client_id==client.id)
-                .values(isact=False)
+            background_tasks.add_task(
+                edit_bpjs,
+                payload.bpjs,
+                client.id,
             )
-            db.commit()
-            for data in payload.bpjs:
-                new_bpjs = Bpjs(
-                    client_id = client.id,
-                    name = data.name,
-                    amount = data.amount
-                )
-                ls_bpjs.append(new_bpjs)
         if isinstance(payload.allowences, (list, tuple)):
-            db.execute(
-                update(Allowances)
-                .where(Allowances.client_id==client.id)
-                .values(isact=False)
+            background_tasks.add_task(
+                edit_allowences,
+                payload.allowences,
+                client.id,
             )
-            db.commit()
-            for data in payload.allowences:
-                new_allowances = Allowances(
-                    client_id = client.id,
-                    name = data.name,
-                    amount = data.amount
-                )
-                ls_allowances.append(new_allowances)
-        db.bulk_save_objects(ls_bpjs)
-        db.bulk_save_objects(ls_allowances)
-        db.bulk_save_objects(ls_outlet)
-        db.commit()    
+        # db.bulk_save_objects(ls_bpjs)
+        # db.bulk_save_objects(ls_allowances)
+        # db.commit()    
         return "oke"
     except Exception as e:
         db.rollback()
@@ -305,6 +277,111 @@ async def edit_client(
         )
         db.commit()
         raise ValueError(e)
+    
+async def edit_bpjs(data, client_id):
+    db = SessionLocal()  # Ambil koneksi dari pool
+    db.execute(
+    update(Bpjs).where(
+        Bpjs.client_id==client_id)
+        .values(isact=False)
+    )
+    db.commit()
+    try:
+        for d in data:
+            if d.id == None:
+                new_bpjs = Bpjs(
+                    client_id = client_id,
+                    name = d.name,
+                    amount = d.amount
+                )
+                db.add(new_bpjs)
+                db.commit()
+            else: 
+                exist_data = db.execute(
+                    select(Bpjs)
+                    .filter(Bpjs.id==d.id)
+                ).scalar()
+                exist_data.isact=True
+                exist_data.name=d.name
+                exist_data.amount=d.amount
+                db.add(exist_data)
+                db.commit()
+        return "oke"                
+    except Exception as e:
+        print("Error edit bpjs: \n", e)
+async def edit_allowences(data, client_id):
+    db = SessionLocal()  # Ambil koneksi dari pool
+    db.execute(
+    update(Allowances).where(
+        Allowances.client_id==client_id)
+        .values(isact=False)
+    )
+    db.commit()
+    try:
+        for d in data:
+            if d.id == None:
+                new_allowances = Allowances(
+                    client_id = client_id,
+                    name = d.name,
+                    amount = d.amount
+                )
+                db.add(new_allowances)
+                db.commit()
+            else: 
+                exist_data = db.execute(
+                    select(Allowances)
+                    .filter(Allowances.id==d.id)
+                ).scalar()
+                exist_data.isact=True
+                exist_data.name=d.name
+                exist_data.amount=d.amount
+                db.add(exist_data)
+                db.commit()
+        return "oke"                
+    except Exception as e:
+        print("Error edit allowence: \n", e)
+async def edit_outlet(data, client_id):
+    db = SessionLocal()  # Ambil koneksi dari pool
+    db.execute(
+    update(ClientOutlet).where(
+        ClientOutlet.client_id==client_id)
+        .values(isact=False)
+    )
+    db.commit()
+    try:
+        for d in data:
+            if d.id_outlet == None:
+                new_outlet = ClientOutlet(
+                    client_id = client_id,
+                    name = d.name,
+                    longitude = d.longitude,
+                    latitude = d.latitude,
+                    address = d.address
+                )
+                db.add(new_outlet)
+                db.commit()
+                db.refresh(new_outlet)
+                db.execute(
+                update(ClientOutlet).where(
+                    ClientOutlet.id == new_outlet.id)
+                    .values(id_outlet=await create_custom_id(id=new_outlet.id, prefix='O'))
+                )
+                db.commit()
+            else: 
+                exist_data = db.execute(
+                    select(ClientOutlet)
+                    .filter(ClientOutlet.id_outlet==d.id_outlet)
+                ).scalar()
+                exist_data.isact=True
+                exist_data.name=d.name
+                exist_data.longitude=d.longitude
+                exist_data.latitude=d.latitude
+                exist_data.address=d.address
+                db.add(exist_data)
+                db.commit()
+        return "oke"                
+    except Exception as e:
+        print("Error edit outlet: \n", e)
     
 async def list_client(
     db:Session,
@@ -362,7 +439,7 @@ async def formating_client(data):
                         timezone(TZ)
                     ).strftime("%d-%m-%Y %H:%M:%S") if d.created_at else None,
                     "isact": d.isact
-                } for d in (item.outlets or [])
+                } for d in (item.outlets or []) if d.isact
             ],
             "cs_person": item.cs_person,
             "cs_number": item.cs_number,
@@ -388,7 +465,7 @@ async def detail_client(
 async def formatin_detail(data:Client):
     obj = {
         "id": data.id,
-        "photo": data.photo,
+        "photo": generate_link_download(data.photo),
         "name": data.name,
         "address": data.address,
         "outlet":[
@@ -399,7 +476,7 @@ async def formatin_detail(data:Client):
             "total_active": 10, # hardcode
             "latitude": x.latitude,
             "longitude": x.longitude
-        } for x in data.outlets
+        } for x in (data.outlets or []) if x.isact
         ] if data.outlets else [],
         "basic_salary": data.basic_salary,
         "agency_fee": data.fee_agency,
@@ -409,14 +486,14 @@ async def formatin_detail(data:Client):
             "id": x.id,
             "name": x.name,
             "amount":x.amount,
-        } for x in data.bpjs
+        } for x in (data.bpjs or []) if x.isact
         ] if data.bpjs else [],
         "allowences":[
             {
             "id": x.id,
             "name": x.name,
             "amount": x.amount,
-        } for x in data.allowances
+        } for x in (data.allowances or []) if x.isact
         ] if data.allowances else [],
         "cs_person":data.cs_person,
         "cs_number":data.cs_number,
@@ -425,7 +502,7 @@ async def formatin_detail(data:Client):
     return obj
 
 
-async def edit_outlet(
+async def edit_outlet_bak(
     db:Session,
     user:User,
     id_outlet:str,

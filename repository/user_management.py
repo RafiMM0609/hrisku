@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Optional, List
 import secrets
 from math import ceil
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local
+from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
 from models.User import User
 from models.Role import Role
 from models.UserRole import UserRole
@@ -34,6 +34,7 @@ async def detail_user(
                 User.phone,
                 User.address,
                 User.id,
+                User.photo
             ).filter(User.id_user == id_user, User.isact==True)
         )
         user = db.execute(query).first() 
@@ -50,6 +51,7 @@ async def detail_user(
     
 async def formated_detail(user, role):
     obj = {
+        "photo": generate_link_download(user[6]),
         "id_user" : user[0],
         "name":user[1],
         "email":user[2],
@@ -292,11 +294,12 @@ async def list_user(
     except Exception as e:
         raise ValueError(e)
     
-async def formating_user(data):
+async def formating_user(data:List[User]):
     ls_data = []
     for d in data:
         ls_data.append({
             "id_user": d.id_user,
+            "photo": generate_link_download(d.photo),
             "name": d.name,
             "email": d.email,
             "phone": d.phone,

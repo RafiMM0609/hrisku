@@ -125,6 +125,7 @@ async def list_user_route(
 async def edit_route(
     id:str,
     payload: EditTalentRequest,
+    background_tasks:BackgroundTasks,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -139,6 +140,7 @@ async def edit_route(
             db=db,
             id_user=id,
             user=user,
+            background_tasks=background_tasks,
             payload=payload,
         )
         return common_response(Ok(

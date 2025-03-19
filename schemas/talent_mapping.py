@@ -39,6 +39,11 @@ class ShiftRequest(BaseModel):
     day: str
     start_time : str = "08:00"
     end_time : str = "15:00"
+class ShiftEdit(BaseModel):
+    id_shift:Optional[str]=None
+    day: str
+    start_time : str = "08:00"
+    end_time : str = "15:00"
 
 class ShiftResponse(BaseModel):
     shift_id:str
@@ -84,5 +89,5 @@ class EditTalentRequest(BaseModel):
     address: str
     client_id : int
     outlet_id : int
-    shift: Optional[List[ShiftRequest]]
+    shift: Optional[List[ShiftEdit]]
     workdays: Optional[int]

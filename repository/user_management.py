@@ -213,7 +213,7 @@ async def edit_user(
         user_exist.email = payload.email
         user_exist.phone = payload.phone
         user_exist.address = payload.address
-        user_exist.phone = payload.phone
+        user_exist.photo = payload.photo
         user_exist.updated_by = user.id
         db.add(user_exist)
         db.commit()

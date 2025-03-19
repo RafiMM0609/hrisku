@@ -480,7 +480,7 @@ async def formatin_detail(data:Client):
         ] if data.outlets else [],
         "basic_salary": data.basic_salary,
         "agency_fee": data.fee_agency,
-        "payment_date": data.due_date_payment.strftime("%d-%m-%Y"),
+        "payment_date": data.due_date_payment.strftime("%d-%m-%Y") if data.due_date_payment else None,
         "bpjs":[
             {
             "id": x.id,

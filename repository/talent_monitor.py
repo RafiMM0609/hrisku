@@ -116,7 +116,7 @@ async def formating_talent(data:List[User]):
         ls_data.append({
             "talend_id": d.id_user,
             "name": d.name,
-            "dob": d.birth_date,
+            "dob": d.birth_date.strftime("%d-%m-%Y") if d.birth_date else None,
             "nik": d.nik,
             "email": d.email,
             "phone": d.phone,

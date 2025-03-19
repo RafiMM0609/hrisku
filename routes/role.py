@@ -113,11 +113,12 @@ async def list_role_route(
     },
 )
 async def list_role_route(
-    id_role:int,
+    id_role:str,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
 ):
     try:
+        id_role=int(id_role)
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized())
@@ -142,7 +143,7 @@ async def list_role_route(
     },
 )
 async def list_role_route(
-    id_role:int,
+    id_role:str,
     page:Optional[int]=1,
     page_size:Optional[int]=10,
     src:Optional[str]=None,
@@ -150,6 +151,7 @@ async def list_role_route(
     token: str = Depends(oauth2_scheme),
 ):
     try:
+        id_role=int(id_role)
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized())

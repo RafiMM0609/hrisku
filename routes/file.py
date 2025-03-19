@@ -39,13 +39,14 @@ async def upload_file_router(
         file_name = os.path.splitext(file.filename)[0]
         now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         path = await upload_file(
-            upload_file=file, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
+        upload_file=file, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
         )
         return common_response(Created(path))
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return common_response(BadRequest(error="Failed Upload", detail=str(e)))
+        print("Error upload: \n", e)
+        return common_response(BadRequest(message="Failed Upload", data={"detail":str(e)}))
 
 
 @router.get(

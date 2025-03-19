@@ -82,7 +82,7 @@ async def list_cb_route(
     },
 )
 async def list_detail_cb_route(
-    id:int,
+    id:str,
     page:Optional[int]=1,
     page_size:Optional[int]=10,
     src:Optional[str]=None,

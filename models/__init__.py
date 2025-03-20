@@ -12,7 +12,7 @@ Base = declarative_base()
 # Konfigurasi optimal connection pool
 engine = create_engine(
     f"mysql+mysqlconnector://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
-    pool_size=20,         # Jumlah koneksi tetap dalam pool
+    pool_size=30,         # Jumlah koneksi tetap dalam pool
     max_overflow=30,      # Tambahan koneksi saat penuh
     pool_recycle=1800,    # Recycle koneksi tiap 30 menit
     pool_timeout=10       # Timeout menunggu koneksi
@@ -22,11 +22,11 @@ engine = create_engine(
 # SessionLocal = sessionmaker(bind=engine)
 SessionLocal = sessionmaker(bind=engine)
 # Check connection
-try:
-    with engine.connect() as connection:
-        print("Connected to MySQL!")
-except Exception as e:
-    print(f"Failed to connect sync: {e}")
+# try:
+#     with engine.connect() as connection:
+#         print("Connected to MySQL!")
+# except Exception as e:
+#     print(f"Failed to connect sync: {e}")
 
 def get_db():
     db = SessionLocal()

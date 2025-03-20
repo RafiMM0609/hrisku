@@ -29,6 +29,7 @@ from schemas.client import (
     AddClientRequest,
     EditClientRequest,
     DetailClientResponse,
+    DataDetailClientSignatureResponse,
 )
 # from core.file import generate_link_download
 from repository import client as ClientRepo
@@ -190,6 +191,34 @@ async def detail_route(
         data = await ClientRepo.detail_client(
             db=db,
             id=id,
+        )
+        return common_response(Ok(
+            message="Success delete data",
+            data=data,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/detail/{id}",
+    responses={
+        "200": {"model": DataDetailClientSignatureResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def detail_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data = await ClientRepo.get_detail_client(
+            db=db,
+            id_client=id,
         )
         return common_response(Ok(
             message="Success delete data",

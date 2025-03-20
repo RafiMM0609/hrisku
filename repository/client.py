@@ -2,7 +2,7 @@ from typing import Optional, List
 from math import ceil
 import secrets
 from sqlalchemy import select, func, distinct, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, subqueryload
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
 from models.Role import Role
@@ -23,7 +23,10 @@ from math import ceil
 from schemas.client import (
     AddClientRequest,
     EditClientRequest,
-    EditOutletRequest
+    EditOutletRequest,
+    DataDetailClientSignature,
+    OutletList,
+    PayrollClient,
 )
 
 
@@ -553,3 +556,75 @@ async def delete_outlet(
     except Exception as e:
         print("Error edit outlet", e)
         raise ValueError("Failed edit data")
+    
+async def get_detail_client(
+    db:Session,
+    id_client:str,
+)->DataDetailClientSignature:
+    try:
+        # client = db.query(Client).filter(Client.id_client == id_client).first()
+        result = (
+            db.query(Client)
+            .options(
+                subqueryload(Client.outlets),
+                subqueryload(Client.allowances),
+                subqueryload(Client.bpjs),
+                subqueryload(Client.contract_clients),
+                subqueryload(Client.client_tax),
+            )
+            .filter(Client.id_client == id_client)
+            .first()
+        )
+
+        client_data = to_pydantic(result)
+        if client_data:
+            print(client_data.dict())
+
+    except Exception as e:
+        print("Error get detail client:\n", e)
+        raise ValueError("Failed get detail client")
+    
+def to_pydantic(result:Client):
+    if not result:
+        return None
+    
+    # Parse outlet
+    outlets = [
+        OutletList(
+            id_outlet=outlet.id_outlet,
+            name=outlet.name,
+            total_active=12,
+            address=outlet.address,
+            cs_name="outlet.cs_name",
+            cs_email="outlet.cs_email",
+            cs_phone="outlet.cs_phone"
+        )
+        for outlet in result.outlets
+    ]
+    
+    # Parse payroll
+    payroll = PayrollClient(
+        basic_salary=result.basic_salary,
+        agency_fee=result.fee_agency,
+        allowance=12,
+        total_deduction=12,
+        nett_payment=12,
+        due_date=result.due_date_payment.strftime("%d-%m-%Y")
+    )
+    
+    # Gabungin ke DataDetailClientSignature
+    return DataDetailClientSignature(
+        name=result.name,
+        address=result.address,
+        id_client=result.id_client,
+        outlet=outlets,
+        payroll=payroll,
+        total_active=12,
+        manager_signature=result.contract_clients[0].manager_signature if result.contract_clients else None,
+        technical_signature=result.contract_clients[0].technical_signature if result.contract_clients else None
+    )
+
+# Panggil fungsi
+# client_data = to_pydantic(result)
+# if client_data:
+#     print(client_data.dict())

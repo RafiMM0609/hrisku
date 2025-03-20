@@ -10,6 +10,24 @@ class Outlet(BaseModel):
     latitude:float
     longitude:float
     address:str
+
+class OutletList(BaseModel):
+    id_outlet:str
+    name:str
+    total_active:int
+    address:str
+    cs_name:str
+    cs_email:str
+    cs_phone:str
+
+class PayrollClient(BaseModel):
+    basic_salary:float
+    agency_fee:float
+    allowance:float
+    total_deduction:float
+    nett_payment:float
+    due_date:str   
+
 class OutletEdit(BaseModel):
     id_outlet:Optional[str]=None
     name:str
@@ -146,5 +164,22 @@ class EditOutletRequest(BaseModel):
     address:Optional[str]=None
     latitude:Optional[float]
     longitude:Optional[float]
+
+class DataDetailClientSignature(BaseModel):
+    name:str
+    address:str
+    id_client:str
+    outlet:List[OutletList]
+    payroll:PayrollClient
+    total_active:int
+    manager_signature:Optional[str] = None
+    technical_signature:Optional[str] = None
+
+class DataDetailClientSignatureResponse(BaseModel):
+    meta: MetaResponse
+    data: DataDetailClientSignature
+    status: str
+    code: int
+    message: str
 
 

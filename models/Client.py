@@ -16,6 +16,8 @@ from models.ClientOutlet import ClientOutlet
 from models.Bpjs import Bpjs
 from models.Allowances import Allowances
 from models.ClientPayment import ClientPayment
+from models.ContractClient import ContractClient
+from models.Tax import Tax
 
 class Client(Base):
     __tablename__ = "client"
@@ -39,13 +41,15 @@ class Client(Base):
     isact = Column(Boolean, default=True)
     payment_status = Column(Boolean, default=True)
     due_date_payment = Column(Date, nullable=True)
-    id_client = Column(String, nullable=True)
-    photo = Column(String, nullable=False, index=True)
+    id_client = Column(String, nullable=True, index=True)
+    photo = Column(String, nullable=False)
     
     # Relation
     user_client = relationship("User", back_populates="client_user")
-    outlets = relationship("ClientOutlet", back_populates="client")
-    bpjs = relationship("Bpjs", back_populates="client")
-    allowances = relationship("Allowances", back_populates="client")
+    outlets = relationship("ClientOutlet", back_populates="client", primaryjoin="and_(ClientOutlet.client_id == Client.id, ClientOutlet.isact == True)")
+    bpjs = relationship("Bpjs", back_populates="client", primaryjoin="and_(Bpjs.client_id == Client.id, Bpjs.isact == True)")
+    allowances = relationship("Allowances", back_populates="client", primaryjoin="and_(Allowances.client_id == Client.id, Allowances.isact == True)")
     client_payments = relationship("ClientPayment", back_populates="clients")
+    contract_clients = relationship("ContractClient", back_populates="clients")
+    client_tax = relationship("Tax", back_populates="clients", primaryjoin="and_(Tax.client_id == Client.id, Tax.isact == True)")
 

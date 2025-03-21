@@ -38,7 +38,7 @@ from schemas.talent_monitor import (
     ListUserResponse,
     TalentInformationResponse,
     TalentMappingResponse,
-    DataContratResponse
+    DataContratResponse,
 )
 # from core.file import generate_link_download
 from repository import talent_monitor as TalentRepo
@@ -100,6 +100,34 @@ async def detail_user_information_route(
         if not user:
             return common_response(Unauthorized())
         user_data = await TalentRepo.data_talent_information(
+            db=db,
+            talent_id=talent_id
+        )
+        return common_response(Ok(
+            data=user_data,
+            message="Success get data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/talent-mapping/{talent_id}",
+    responses={
+        "200": {"model": TalentMappingResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def talent_mapping_route(
+    talent_id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        user_data = await TalentRepo.data_talent_mapping(
             db=db,
             talent_id=talent_id
         )

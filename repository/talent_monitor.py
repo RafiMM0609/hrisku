@@ -38,9 +38,7 @@ async def data_talent_mapping(
         query = select(
             User, 
             Client, 
-            Client.name.label("client_name"),
-            ClientOutlet,
-            ClientOutlet.name.label("outlet_name")
+            ClientOutlet
         ).join(
             Client, User.client_id == Client.id
         ).join(
@@ -55,7 +53,7 @@ async def data_talent_mapping(
         if not result:
             raise ValueError("Talent not found or has no mapping information")
         
-        user, client, client_name, outlet, outlet_name = result
+        user, client, outlet = result
         
         # Get shift information
         shift_query = select(ShiftSchedule).filter(
@@ -64,30 +62,40 @@ async def data_talent_mapping(
         )
         shifts = db.execute(shift_query).scalars().all()
         
-        # Format shift data
-        shift_data = []
+        # Format shift data according to DataWorkingArrangement model
+        work_arrangements = []
         for shift in shifts:
-            shift_data.append({
-                "shift_id": shift.id_shift,
-                "day": shift.day,
-                "start_time": shift.time_start.strftime("%H:%M") if shift.time_start else "08:00",
-                "end_time": shift.time_end.strftime("%H:%M") if shift.time_end else "15:00"
-            })
+            work_arr = DataWorkingArrangement(
+                shift_id=shift.id_shift or "S001",
+                day=shift.day or "Monday",
+                time_start=shift.time_start.strftime("%H:%M") if shift.time_start else "08:00",
+                time_end=shift.time_end.strftime("%H:%M") if shift.time_end else "15:00"
+            )
+            work_arrangements.append(work_arr)
         
-        # Create output
-        return TalentMapping(
-            talent_id=user.id_user,
-            name=user.name,
-            dob=user.birth_date.strftime("%d-%m-%Y") if user.birth_date else "22-12-31",
-            nik=user.nik if user.nik else "",
-            email=user.email,
-            phone=user.phone,
-            address=user.address,
-            client=Organization(id=client.id, name=client_name),
-            outlet=Organization(id=outlet.id, name=outlet_name),
-            workdays=shifts[0].workdays if shifts and shifts[0].workdays else 0,
-            shift=shift_data
+        # If no shifts found, add a default one to match model requirements
+        if not work_arrangements:
+            work_arrangements.append(DataWorkingArrangement())
+        
+        # Create output using the proper pydantic models
+        client_org = Organization(
+            id=client.id,
+            name=client.name
         )
+        
+        outlet_data = DataOutlet(
+            name=outlet.name or "",
+            address=outlet.address or "",
+            latitude=float(outlet.latitude) if outlet.latitude else -6.2088,
+            longitude=float(outlet.longitude) if outlet.longitude else 106.8456
+        )
+        
+        return TalentMapping(
+            client=client_org,
+            outlet=outlet_data,
+            workdays=len(work_arrangements) if work_arrangements else 5,
+            workarr=work_arrangements
+        ).dict()
         
     except Exception as e:
         print(f"Error getting talent mapping: {e}")

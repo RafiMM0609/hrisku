@@ -20,6 +20,7 @@ from fastapi import UploadFile
 import os
 import asyncio
 from math import ceil
+from schemas.client import DetailClient, OutletList, Bpjs, Allowances
 from schemas.client import (
     AddClientRequest,
     EditClientRequest,
@@ -27,6 +28,7 @@ from schemas.client import (
     DataDetailClientSignature,
     OutletList,
     PayrollClient,
+    DetailClient,
 )
 
 
@@ -455,54 +457,57 @@ async def formating_client(data):
     return result
 
 async def detail_client(
-    db:Session,
-    id:int
-):
+    db: Session,
+    id: int
+) -> DetailClient:
     try:
         query = select(Client).filter(Client.id_client == id).limit(1)
         client = db.execute(query).scalar()
         return await formatin_detail(client)
     except Exception as e:
-        print("Error detail: \n",e)
-        raise ValueError("Failed get detail client")
-async def formatin_detail(data:Client):
-    obj = {
-        "id": data.id,
-        "photo": generate_link_download(data.photo),
-        "name": data.name,
-        "address": data.address,
-        "outlet":[
-            {
-            "id_outlet": x.id_outlet,
-            "name": x.name,
-            "address": x.address,
-            "total_active": 10, # hardcode
-            "latitude": x.latitude,
-            "longitude": x.longitude
-        } for x in (data.outlets or []) if x.isact
+        print("Error detail: \n", e)
+        raise ValueError("Failed to get detail client")
+
+async def formatin_detail(data: Client) -> DetailClient:
+    if not data:
+        raise ValueError("Client not found")
+
+    return DetailClient(
+        id=data.id,
+        photo=generate_link_download(data.photo),
+        name=data.name,
+        address=data.address,
+        outlet=[
+            OutletList(
+                id_outlet=x.id_outlet,
+                name=x.name,
+                address=x.address,
+                total_active=len([o for o in data.outlets if o.isact]),  # Dynamically calculate total_active
+                latitude=x.latitude,
+                longitude=x.longitude
+            ) for x in (data.outlets or []) if x.isact
         ] if data.outlets else [],
-        "basic_salary": data.basic_salary,
-        "agency_fee": data.fee_agency,
-        "payment_date": data.due_date_payment.strftime("%d-%m-%Y") if data.due_date_payment else None,
-        "bpjs":[
-            {
-            "id": x.id,
-            "name": x.name,
-            "amount":x.amount,
-        } for x in (data.bpjs or []) if x.isact
+        basic_salary=data.basic_salary,
+        agency_fee=data.fee_agency,
+        payment_date=data.due_date_payment.strftime("%d-%m-%Y") if data.due_date_payment else None,
+        bpjs=[
+            Bpjs(
+                id=x.id,
+                name=x.name,
+                amount=x.amount
+            ) for x in (data.bpjs or []) if x.isact
         ] if data.bpjs else [],
-        "allowences":[
-            {
-            "id": x.id,
-            "name": x.name,
-            "amount": x.amount,
-        } for x in (data.allowances or []) if x.isact
+        allowences=[
+            Allowances(
+                id=x.id,
+                name=x.name,
+                amount=x.amount
+            ) for x in (data.allowances or []) if x.isact
         ] if data.allowances else [],
-        "cs_person":data.cs_person,
-        "cs_number":data.cs_number,
-        "cs_email":data.cs_email
-    }
-    return obj
+        cs_person=data.cs_person,
+        cs_number=data.cs_number,
+        cs_email=data.cs_email
+    )
 
 
 async def edit_outlet_bak(
@@ -558,11 +563,11 @@ async def delete_outlet(
         raise ValueError("Failed edit data")
     
 async def get_detail_client(
-    db:Session,
-    id_client:str,
-)->DataDetailClientSignature:
+    db: Session,
+    id_client: str,
+) -> DataDetailClientSignature:
     try:
-        # client = db.query(Client).filter(Client.id_client == id_client).first()
+        # Query the client with related data using subqueryload for optimization
         result = (
             db.query(Client)
             .options(
@@ -572,56 +577,60 @@ async def get_detail_client(
                 subqueryload(Client.contract_clients),
                 subqueryload(Client.client_tax),
             )
-            .filter(Client.id_client == id_client)
+            .filter(Client.id_client == id_client, Client.isact == True)
             .first()
         )
 
+        if not result:
+            raise ValueError("Client not found")
+
+        # Convert the result to a Pydantic model
         client_data = to_pydantic(result)
-        if client_data:
-            print(client_data.dict())
+        return client_data
 
     except Exception as e:
         print("Error get detail client:\n", e)
-        raise ValueError("Failed get detail client")
-    
-def to_pydantic(result:Client):
+        raise ValueError("Failed to get detail client")
+
+
+def to_pydantic(result: Client) -> DataDetailClientSignature:
     if not result:
         return None
-    
-    # Parse outlet
+
+    # Parse outlets
     outlets = [
         OutletList(
             id_outlet=outlet.id_outlet,
             name=outlet.name,
-            total_active=12,
+            total_active=12,  # Placeholder for total_active
             address=outlet.address,
-            cs_name="outlet.cs_name",
-            cs_email="outlet.cs_email",
-            cs_phone="outlet.cs_phone"
+            cs_name="outlet.cs_name",  # Placeholder for CS name
+            cs_email="outlet.cs_email",  # Placeholder for CS email
+            cs_phone="outlet.cs_phone",  # Placeholder for CS phone
         )
-        for outlet in result.outlets
+        for outlet in result.outlets if outlet.isact
     ]
-    
+
     # Parse payroll
     payroll = PayrollClient(
         basic_salary=result.basic_salary,
         agency_fee=result.fee_agency,
-        allowance=12,
-        total_deduction=12,
-        nett_payment=12,
-        due_date=result.due_date_payment.strftime("%d-%m-%Y")
+        allowance=sum(allowance.amount for allowance in result.allowances if allowance.isact),
+        total_deduction=0,  # Placeholder for total_deduction
+        nett_payment=0,  # Placeholder for nett_payment
+        due_date=result.due_date_payment.strftime("%d-%m-%Y") if result.due_date_payment else None,
     )
-    
-    # Gabungin ke DataDetailClientSignature
+
+    # Combine into DataDetailClientSignature
     return DataDetailClientSignature(
         name=result.name,
         address=result.address,
         id_client=result.id_client,
         outlet=outlets,
         payroll=payroll,
-        total_active=12,
+        total_active=len(outlets),  # Total active outlets
         manager_signature=result.contract_clients[0].manager_signature if result.contract_clients else None,
-        technical_signature=result.contract_clients[0].technical_signature if result.contract_clients else None
+        technical_signature=result.contract_clients[0].technical_signature if result.contract_clients else None,
     )
 
 # Panggil fungsi

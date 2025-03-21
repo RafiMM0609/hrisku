@@ -28,6 +28,7 @@ from schemas.common import (
 from schemas.clientbilling import (
     ListClientBillingResponse,
     ListDetailBillingResponse,
+    ListDetailBillingActionResponse,
 )
 # from core.file import generate_link_download
 from repository import clientbilling as ClientBilRepo
@@ -76,7 +77,7 @@ async def list_cb_route(
 
 @router.get("/list-detail/{id}",
     responses={
-        "200": {"model": CudResponschema},
+        "200": {"model": ListDetailBillingResponse},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
@@ -110,6 +111,35 @@ async def list_detail_cb_route(
                     "page_size": page_size,
                     "page": page,
                 },
+                data=data
+            )
+            )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/list-detail/action/{id}",
+    responses={
+        "200": {"model": ListDetailBillingActionResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_detail_cb_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):  
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data = await ClientBilRepo.list_billing_action(
+            db=db,
+            id=id,
+        )
+        return common_response(
+            Ok(
+                message="Succes get lisy client",
                 data=data
             )
             )

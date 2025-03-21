@@ -12,13 +12,15 @@ class Outlet(BaseModel):
     address:str
 
 class OutletList(BaseModel):
-    id_outlet:str
+    id_outlet:Optional[str]=None
     name:str
     total_active:int
     address:str
-    cs_name:str
-    cs_email:str
-    cs_phone:str
+    latitude:float
+    longitude:float
+    # cs_name:str
+    # cs_email:str
+    # cs_phone:str
 
 class PayrollClient(BaseModel):
     basic_salary:float
@@ -138,15 +140,15 @@ class ListClientBillingResponse(BaseModel):
 
 class DetailClient(BaseModel):
     id:str
-    photo:str
+    photo:Optional[str]=None
     name: str
     address: str
-    outlet: List[OutletGet]
+    outlet: Optional[List[OutletList]]=None
     basic_salary: float
     agency_fee: float
     payment_date:str = "01-12-2999"
-    bpjs: Optional[List[AddBpjsRequest]] = None
-    allowences: Optional[List[AddAllowencesRequest]] = None
+    bpjs: Optional[List[EditBpjsRequest]] = None
+    allowences: Optional[List[EditAllowencesRequest]] = None
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None

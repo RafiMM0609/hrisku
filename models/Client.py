@@ -45,11 +45,13 @@ class Client(Base):
     photo = Column(String, nullable=False)
     
     # Relation
-    user_client = relationship("User", back_populates="client_user")
+    user_client = relationship("User", back_populates="client_user", primaryjoin="and_(User.client_id == Client.id, User.isact == True)")
     outlets = relationship("ClientOutlet", back_populates="client", primaryjoin="and_(ClientOutlet.client_id == Client.id, ClientOutlet.isact == True)")
     bpjs = relationship("Bpjs", back_populates="client", primaryjoin="and_(Bpjs.client_id == Client.id, Bpjs.isact == True)")
     allowances = relationship("Allowances", back_populates="client", primaryjoin="and_(Allowances.client_id == Client.id, Allowances.isact == True)")
     client_payments = relationship("ClientPayment", back_populates="clients")
-    contract_clients = relationship("ContractClient", back_populates="clients")
+    contract_clients = relationship("ContractClient", back_populates="clients", 
+                                    primaryjoin="and_(ContractClient.client_id == Client.id, ContractClient.isact == True)", 
+                                    order_by="ContractClient.created_at")
     client_tax = relationship("Tax", back_populates="clients", primaryjoin="and_(Tax.client_id == Client.id, Tax.isact == True)")
 

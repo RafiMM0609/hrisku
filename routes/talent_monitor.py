@@ -85,7 +85,7 @@ async def list_user_route(
     
 @router.get("/information/{talent_id}",
     responses={
-        "200": {"model": ListUserResponse},
+        "200": {"model": TalentInformationResponse},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },

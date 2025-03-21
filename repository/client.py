@@ -20,7 +20,6 @@ from fastapi import UploadFile
 import os
 import asyncio
 from math import ceil
-from schemas.client import DetailClient, OutletList, Bpjs, Allowances
 from schemas.client import (
     AddClientRequest,
     EditClientRequest,
@@ -29,6 +28,8 @@ from schemas.client import (
     OutletList,
     PayrollClient,
     DetailClient,
+    EditBpjsRequest,
+    EditAllowencesRequest,
 )
 
 
@@ -473,7 +474,7 @@ async def formatin_detail(data: Client) -> DetailClient:
         raise ValueError("Client not found")
 
     return DetailClient(
-        id=data.id,
+        id=data.id_client,
         photo=generate_link_download(data.photo),
         name=data.name,
         address=data.address,
@@ -481,24 +482,24 @@ async def formatin_detail(data: Client) -> DetailClient:
             OutletList(
                 id_outlet=x.id_outlet,
                 name=x.name,
-                address=x.address,
                 total_active=len([o for o in data.outlets if o.isact]),  # Dynamically calculate total_active
+                address=x.address,
                 latitude=x.latitude,
                 longitude=x.longitude
             ) for x in (data.outlets or []) if x.isact
-        ] if data.outlets else [],
+            ] if data.outlets else [],
         basic_salary=data.basic_salary,
         agency_fee=data.fee_agency,
         payment_date=data.due_date_payment.strftime("%d-%m-%Y") if data.due_date_payment else None,
         bpjs=[
-            Bpjs(
+            EditBpjsRequest(
                 id=x.id,
                 name=x.name,
                 amount=x.amount
             ) for x in (data.bpjs or []) if x.isact
         ] if data.bpjs else [],
         allowences=[
-            Allowances(
+            EditAllowencesRequest(
                 id=x.id,
                 name=x.name,
                 amount=x.amount
@@ -507,7 +508,7 @@ async def formatin_detail(data: Client) -> DetailClient:
         cs_person=data.cs_person,
         cs_number=data.cs_number,
         cs_email=data.cs_email
-    )
+    ).dict()
 
 
 async def edit_outlet_bak(
@@ -604,6 +605,8 @@ def to_pydantic(result: Client) -> DataDetailClientSignature:
             name=outlet.name,
             total_active=12,  # Placeholder for total_active
             address=outlet.address,
+            latitude=outlet.latitude,
+            longitude=outlet.longitude,
             cs_name="outlet.cs_name",  # Placeholder for CS name
             cs_email="outlet.cs_email",  # Placeholder for CS email
             cs_phone="outlet.cs_phone",  # Placeholder for CS phone
@@ -631,7 +634,7 @@ def to_pydantic(result: Client) -> DataDetailClientSignature:
         total_active=len(outlets),  # Total active outlets
         manager_signature=result.contract_clients[0].manager_signature if result.contract_clients else None,
         technical_signature=result.contract_clients[0].technical_signature if result.contract_clients else None,
-    )
+    ).dict()
 
 # Panggil fungsi
 # client_data = to_pydantic(result)

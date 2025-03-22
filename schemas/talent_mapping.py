@@ -136,3 +136,10 @@ class ViewMappingInformation(BaseModel):
 class ViewTalent(BaseModel):
     personal : ViewPersonalInformation
     mapping : ViewMappingInformation
+    
+class ViewTalentResponse(BaseModel):
+    meta: MetaResponse
+    data: ViewTalent
+    status: str
+    code: int
+    message: str

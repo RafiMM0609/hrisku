@@ -9,7 +9,7 @@ class Contract(Base):
     __tablename__ = "contract"
 
     id = Column(Integer, primary_key=True, nullable=False, index=True)
-    emp_id = Column(String(36), ForeignKey("client.id"),nullable=False, index=True)
+    emp_id = Column(String(36), ForeignKey("user.id"), nullable=False, index=True)
     start = Column(Date, nullable=True)
     end = Column(Date, nullable=True)
     period = Column(Integer, nullable=True)

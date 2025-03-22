@@ -430,7 +430,7 @@ async def formating_talent(data:List[User]):
 async def detail_talent_mapping(
     db: Session,
     id_user: str,
-)->DetailTalentMapping:
+) -> DetailTalentMapping:
     try:
         query = select(User).filter(User.id_user == id_user).limit(1)
         data = db.execute(query).scalar_one_or_none()
@@ -444,31 +444,50 @@ async def detail_talent_mapping(
         print("Error detail mapping: \n", e)
         raise ValueError("Failed to get data")
 
-async def formating_detail(data: User):
-    return {
-        "talent_id": data.id_user,
-        "photo": data.photo,
-        "name": data.name,
-        "dob": data.birth_date.strftime("%d-%m-%Y") if data.birth_date else None,
-        "nik": data.nik,
-        "email": data.email,
-        "phone": data.phone,
-        "address": data.address,
-        "client": {
-            "id": data.client_user.id if data.client_user else None,
-            "name": data.client_user.name if data.client_user else None,
-        },
-        "outlet": {
-            "id": data.user_outlet.id if data.user_outlet else None,
-            "name": data.user_outlet.name if data.user_outlet else None,
-        },
-        "workdays": data.user_shift[0].workdays if data.user_shift else None,
-        "shift": [
-            {
-                "shift_id": x.id_shift,
-                "day": x.day,
-                "start_time": x.time_start.strftime("%H:%M"),
-                "end_time": x.time_end.strftime("%H:%M")
-            } for x in (data.user_shift or []) if x.isact
+async def formating_detail(data: User) -> DetailTalentMapping:
+    contract_data = None
+    if data.contract_user:
+        contract = data.contract_user[0]  # Assuming the first contract is the current one
+        history = [
+            HistoryContract(
+                start_date=h.start.strftime("%d-%m-%Y") if h.start else None,
+                end_date=h.end.strftime("%d-%m-%Y") if h.end else None,
+                file=h.file,
+                file_name=h.file_name
+            ) for h in (contract.history or [])
         ]
-    }
+        contract_data = DataContractManagement(
+            start_date=contract.start.strftime("%d-%m-%Y") if contract.start else None,
+            end_date=contract.end.strftime("%d-%m-%Y") if contract.end else None,
+            file=contract.file,
+            history=history
+        )
+
+    return DetailTalentMapping(
+        talent_id=data.id_user,
+        photo=data.photo,
+        name=data.name,
+        dob=data.birth_date.strftime("%d-%m-%Y") if data.birth_date else None,
+        nik=data.nik,
+        email=data.email,
+        phone=data.phone,
+        address=data.address,
+        client=Organization(
+            id=data.client_user.id,
+            name=data.client_user.name
+        ) if data.client_user else None,
+        outlet=Organization(
+            id=data.user_outlet.id,
+            name=data.user_outlet.name
+        ) if data.user_outlet else None,
+        workdays=data.user_shift[0].workdays if data.user_shift else None,
+        shift=[
+            ShiftResponse(
+                shift_id=x.id_shift,
+                day=x.day,
+                start_time=x.time_start.strftime("%H:%M"),
+                end_time=x.time_end.strftime("%H:%M")
+            ) for x in (data.user_shift or []) if x.isact
+        ],
+        contract=contract_data
+    ).dict()

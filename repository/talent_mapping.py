@@ -22,6 +22,7 @@ from schemas.talent_mapping import (
     EditTalentRequest,
     ShiftEdit,
     ContractManagement,
+    DetailTalentMapping,
 )
 import os
 import asyncio
@@ -425,7 +426,7 @@ async def formating_talent(data:List[User]):
 async def detail_talent_mapping(
     db: Session,
     id_user: str,
-):
+)->DetailTalentMapping:
     try:
         query = select(User).filter(User.id_user == id_user).limit(1)
         data = db.execute(query).scalar_one_or_none()

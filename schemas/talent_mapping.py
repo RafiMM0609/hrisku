@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+ from typing import List, Optional, Dict
 from pydantic import BaseModel
 
 class Organization(BaseModel):
@@ -109,3 +109,30 @@ class EditTalentRequest(BaseModel):
     outlet_id : int
     shift: Optional[List[ShiftEdit]]
     workdays: Optional[int]
+    
+    
+class ViewPersonalInformation(BaseModel):
+    talent_id : str
+    name :str
+    dob : str
+    nik : str
+    email : str
+    phone : str
+    address : str
+    face_id : st
+    
+class ViewMappingInformation(BaseModel):
+    client_id : str
+    client_name : str
+    client_address : str
+    outlet_name : str
+    outlet_address : str
+    outlet_latitude : float
+    outlet_longitude : float
+    workdays : int
+    workarg : Optional[List[ShiftResponse]]
+    contract : Optional[ContractManagement]
+    
+class ViewTalent(BaseModel):
+    personal : ViewPersonalInformation
+    mapping : ViewMappingInformation

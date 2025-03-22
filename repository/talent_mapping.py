@@ -32,6 +32,47 @@ from schemas.talent_mapping import (
 import os
 import asyncio
 
+async def map_shift_to_calendar(emp_id: str, start_time: str, end_time: str, day: str, db: Session):
+    try:
+        start = datetime.strptime(start_time, "%H:%M")
+        end = datetime.strptime(end_time, "%H:%M")
+        day_mapping = {
+            "Monday": 0,
+            "Tuesday": 1,
+            "Wednesday": 2,
+            "Thursday": 3,
+            "Friday": 4,
+            "Saturday": 5,
+            "Sunday": 6
+        }
+        day_index = day_mapping.get(day)
+        if day_index is None:
+            raise ValueError("Invalid day provided")
+
+        # Assuming start date is today for example purposes
+        start_date = datetime.now()
+        while start_date.weekday() != day_index:
+            start_date += timedelta(days=1)
+
+        shifts = []
+        for i in range(10):  # Generate shifts for the next 10 occurrences
+            shift_start = start_date.replace(hour=start.hour, minute=start.minute)
+            shift_end = start_date.replace(hour=end.hour, minute=end.minute)
+            shifts.append({
+                "id": emp_id,
+                "title": "Shift",
+                "start": shift_start.strftime("%Y-%m-%d %H:%M"),
+                "end": shift_end.strftime("%Y-%m-%d %H:%M"),
+                "day": day
+            })
+            start_date += timedelta(days=7)
+
+        return shifts
+
+    except Exception as e:
+        print(f"Error mapping shift to calendar: {e}")
+        raise ValueError("Failed to map shift to calendar")
+
 async def ViewTalentData(
     db: Session,
     talent_id: str

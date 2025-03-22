@@ -34,14 +34,14 @@ async def data_talent_mapping(
     Get talent mapping data by talent_id including client and outlet information
     """
     try:
-        # Get user with client and outlet relationship
+        # Get user with optional client and outlet relationship
         query = select(
             User, 
             Client, 
             ClientOutlet
-        ).join(
+        ).outerjoin(
             Client, User.client_id == Client.id
-        ).join(
+        ).outerjoin(
             ClientOutlet, User.outlet_id == ClientOutlet.id
         ).filter(
             User.id_user == talent_id,
@@ -51,7 +51,7 @@ async def data_talent_mapping(
         result = db.execute(query).first()
         
         if not result:
-            raise ValueError("Talent not found or has no mapping information")
+            raise ValueError("Talent not found")
         
         user, client, outlet = result
         
@@ -79,16 +79,16 @@ async def data_talent_mapping(
         
         # Create output using the proper pydantic models
         client_org = Organization(
-            id=client.id,
-            name=client.name
-        )
+            id=client.id if client else None,
+            name=client.name if client else None
+        ) if client else None
         
         outlet_data = DataOutlet(
-            name=outlet.name or "",
-            address=outlet.address or "",
-            latitude=float(outlet.latitude) if outlet.latitude else -6.2088,
-            longitude=float(outlet.longitude) if outlet.longitude else 106.8456
-        )
+            name=outlet.name if outlet else None,
+            address=outlet.address if outlet else None,
+            latitude=float(outlet.latitude) if outlet and outlet.latitude else None,
+            longitude=float(outlet.longitude) if outlet and outlet.longitude else None
+        ) if outlet else None
         
         return TalentMapping(
             client=client_org,
@@ -99,7 +99,7 @@ async def data_talent_mapping(
         
     except Exception as e:
         print(f"Error getting talent mapping: {e}")
-        raise ValueError(f"Failed to get talent mapping data: {str(e)}")
+        raise ValueError(f"Failed to get talent mapping")
 
 async def data_talent_information(
     db:Session,

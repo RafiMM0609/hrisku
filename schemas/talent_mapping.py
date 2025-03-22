@@ -64,7 +64,10 @@ class DetailTalentMapping(BaseModel):
     workdays:int
     shift:List[ShiftResponse]
 
-
+class ContractManagement(BaseModel):
+    start_date:str
+    end_date:str
+    file:Optional[str]=None
 
 class RegisTalentRequest(BaseModel):
     photo: Optional[str] = None
@@ -78,6 +81,7 @@ class RegisTalentRequest(BaseModel):
     outlet_id : int
     shift: Optional[List[ShiftRequest]]
     workdays: Optional[int]
+    contract: Optional[ContractManagement]
 
 class EditTalentRequest(BaseModel):
     photo: Optional[str] = None

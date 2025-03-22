@@ -64,8 +64,8 @@ class DataWorkingArrangement(BaseModel):
     time_start:str="08:00"
     time_end:str="15:00"
 class TalentMapping(BaseModel):
-    client:Organization
-    outlet:DataOutlet
+    client:Optional[Organization]=None
+    outlet:Optional[DataOutlet]=None
     workdays:int=5
     workarr:List[DataWorkingArrangement]
 class TalentMappingResponse(BaseModel):

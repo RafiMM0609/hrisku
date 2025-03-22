@@ -30,6 +30,8 @@ from schemas.client import (
     EditClientRequest,
     DetailClientResponse,
     DataDetailClientSignatureResponse,
+    DataClientOptionResponse,
+    ListClientResponse
 )
 # from core.file import generate_link_download
 from repository import client as ClientRepo
@@ -107,7 +109,7 @@ async def edit_client_route(
         return common_response(BadRequest(message=str(e)))
 @router.get("/list",
     responses={
-        "200": {"model": CudResponschema},
+        "200": {"model": ListClientResponse},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
@@ -138,6 +140,35 @@ async def list_client_route(
                     "page_size": page_size,
                     "page": page,
                 },
+                data=data
+            )
+            )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.get("/option",
+    responses={
+        "200": {"model": DataClientOptionResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_option_route(
+    src:Optional[str]=None,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):  
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data = await ClientRepo.get_client_options(
+            db=db,
+            src=src,
+        )
+        return common_response(
+            Ok(
+                message="Succes get option client",
                 data=data
             )
             )

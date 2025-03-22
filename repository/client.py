@@ -30,8 +30,49 @@ from schemas.client import (
     DetailClient,
     EditBpjsRequest,
     EditAllowencesRequest,
+    DataClientOption,
 )
 
+async def get_client_options(
+    db: Session,
+    src: Optional[str] = None,
+):
+    """
+    Get client options for dropdown lists or selection menus.
+    Returns a list of clients with minimal information (id, id_client, name, address).
+    """
+    try:
+        # Build base query
+        query = select(Client).filter(Client.isact == True)
+
+        # Apply search filter if provided
+        if src:
+            query = query.filter(Client.name.ilike(f"%{src}%"))
+
+        # Apply pagination
+        query = (
+            query.order_by(Client.id.asc())
+        )
+
+        # Execute queries
+        clients = db.execute(query).scalars().all()
+
+        # Format the results
+        result = []
+        for client in clients:
+            result.append(
+                DataClientOption(
+                    id=client.id,
+                    id_client=client.id_client,
+                    name=client.name,
+                    address=client.address
+                ).dict()
+            )
+
+        return result
+    except Exception as e:
+        print(f"Error fetching client options: {e}")
+        raise ValueError("Failed to get client options")
 
 async def delete_client(
     id:int,

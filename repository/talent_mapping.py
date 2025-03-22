@@ -20,6 +20,7 @@ from schemas.talent_mapping import (
     RegisTalentRequest,
     EditTalentRequest,
     ShiftEdit,
+    ContractManagement,
 )
 import os
 import asyncio

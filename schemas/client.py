@@ -184,4 +184,17 @@ class DataDetailClientSignatureResponse(BaseModel):
     code: int
     message: str
 
+class DataClientOption(BaseModel):
+    id:int
+    id_client:Optional[str]=None
+    name:Optional[str]=None
+    address:Optional[str]=None
+
+class DataClientOptionResponse(BaseModel):
+    meta: MetaResponse
+    data: DataClientOption
+    status: str
+    code: int
+    message: str
+
 

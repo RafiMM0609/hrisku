@@ -51,6 +51,18 @@ class ShiftResponse(BaseModel):
     start_time : str = "08:00"
     end_time : str = "15:00"
 
+class HistoryContract(BaseModel):
+    start_date:Optional[str]=None
+    end_date:Optional[str]=None
+    file:Optional[str]=None
+    file_name:Optional[str]=None
+
+class DataContractManagement(BaseModel):
+    start_date:Optional[str]=None
+    end_date:Optional[str]=None
+    file:Optional[str]=None
+    history:Optional[List[HistoryContract]]=None
+
 class DetailTalentMapping(BaseModel):
     talent_id:str
     name:str
@@ -69,18 +81,6 @@ class ContractManagement(BaseModel):
     start_date:str
     end_date:str
     file:Optional[str]=None
-
-class HistoryContract(BaseModel):
-    start_date:Optional[str]=None
-    end_date:Optional[str]=None
-    file:Optional[str]=None
-    file_name:Optional[str]=None
-
-class DataContractManagement(BaseModel):
-    start_date:Optional[str]=None
-    end_date:Optional[str]=None
-    file:Optional[str]=None
-    history:Optional[HistoryContract]=None
     
 
 class RegisTalentRequest(BaseModel):

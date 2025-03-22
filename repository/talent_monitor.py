@@ -133,7 +133,7 @@ async def formating_talent_information(d:User) -> TalentInformation:
         nik=d.nik if d.nik else "",
         email=d.email,
         photo=generate_link_download(d.photo) if d.photo else ""
-    )
+    ).dict()
 
 async def list_talent(
     db: Session,

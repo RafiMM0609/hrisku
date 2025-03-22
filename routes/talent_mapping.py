@@ -38,6 +38,7 @@ from schemas.talent_mapping import (
     ListUserResponse,
     RegisTalentRequest,
     EditTalentRequest,
+    ViewTalent,
 )
 # from core.file import generate_link_download
 from repository import talent_mapping as TalentRepo
@@ -173,6 +174,35 @@ async def detail_route(
         return common_response(Ok(
             message="Success get data",
             data=user_data,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+        
+ViewTalentData
+@router.get("/view/{talent_id}",
+    responses={
+        "200": {"model": ViewTalent},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def view_talent_route(
+    talent_id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        talent_data = await TalentRepo.ViewTalentData(
+            db=db,
+            talent_id=talent_id
+        )
+        return common_response(Ok(
+            message="Success get data",
+            data=talent_data,
             )
         )
     except Exception as e:

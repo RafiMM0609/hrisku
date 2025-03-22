@@ -63,6 +63,7 @@ class DetailTalentMapping(BaseModel):
     outlet:Organization
     workdays:int
     shift:List[ShiftResponse]
+    contract:Optional[DataContractManagement]=None
 
 class ContractManagement(BaseModel):
     start_date:str

@@ -13,6 +13,7 @@ from models.ClientOutlet import ClientOutlet
 from models import SessionLocal
 from datetime import datetime, timedelta
 from pytz import timezone
+from models.Contract import Contract
 from settings import TZ, LOCAL_PATH
 from fastapi import UploadFile
 from schemas.talent_mapping import (
@@ -97,6 +98,12 @@ async def add_talent(
             #     payload.shift, 
             #     payload.workdays
             # )
+
+            background_tasks.add_task(
+                add_contract,
+                new_user.id,
+                payload.contract
+            )
             background_tasks.add_task(
                 add_mapping_schedule,
                 new_user.client_id,
@@ -107,6 +114,48 @@ async def add_talent(
     except Exception as e:
         print("Error regis talent : \n", e)
         raise ValueError("Failed regis talent")
+
+    async def add_contract(emp_id: str, payload: ContractManagement):
+        """
+        Insert contract data for a talent into the Contract table.
+        
+        Args:
+            db (Session): Database session
+            emp_id (str): Talent ID
+            payload (ContractManagement): Contract details
+        """
+        db = SessionLocal()  # Ambil koneksi dari pool
+        try:            
+            # Parse dates
+            start_date = datetime.strptime(payload.start_date, "%d-%m-%Y").date()
+            end_date = datetime.strptime(payload.end_date, "%d-%m-%Y").date()
+            
+            # Calculate period in months (approximate)
+            delta = end_date - start_date
+            # Simply get the year from the end date
+            period = end_date.year
+            
+            new_contract = Contract(
+                emp_id=emp_id,
+                start=start_date,
+                end=end_date,
+                period=int(period),
+                file=payload.file,
+                created_at=datetime.now(tz=timezone(TZ)),
+                isact=True
+            )
+            
+            db.add(new_contract)
+            db.commit()
+            
+            return "oke"
+            
+        except Exception as e:
+            db.rollback()
+            print(f"Error adding contract: {e}")
+            raise ValueError(f"Failed to add contract")
+        finally:
+            db.close()  # Jangan lupa close agar tidak bocor
 
 async def add_mapping_schedule(client_id, emp_id, shift, workdays):
     db = SessionLocal()  # Ambil koneksi dari pool

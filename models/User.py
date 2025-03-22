@@ -37,5 +37,6 @@ class User(Base):
     client_user = relationship("Client", back_populates="user_client", foreign_keys=[client_id])
     user_shift = relationship("ShiftSchedule", back_populates="users", foreign_keys=[ShiftSchedule.emp_id])
     user_outlet = relationship("ClientOutlet", back_populates="outlet_user", foreign_keys=[outlet_id])
+    contract_user = relationship("Contract", back_populates="users")
     # Many to Many
     roles = relationship("Role", secondary=UserRole, back_populates="users")

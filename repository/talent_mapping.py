@@ -33,11 +33,116 @@ import os
 import asyncio
 
 async def ViewTalentData(
-    db:Session,
-    talent_id:str
-)->ViewTalent:
-    
+    db: Session,
+    talent_id: str
+) -> ViewTalent:
+    try:
+        # Query to fetch user and related client and outlet information
+        query = select(
+            User.id,
+            User.id_user,
+            User.name,
+            User.birth_date,
+            User.nik,
+            User.email,
+            User.phone,
+            User.address,
+            User.photo,
+            Client.id.label('client_id'),
+            Client.name.label('client_name'),
+            Client.address.label('client_address'),
+            ClientOutlet.name.label('outlet_name'),
+            ClientOutlet.address.label('outlet_address'),
+            ClientOutlet.latitude.label('outlet_latitude'),
+            ClientOutlet.longitude.label('outlet_longitude')
+        ).join(
+            Client, User.client_id == Client.id
+        ).join(
+            ClientOutlet, User.outlet_id == ClientOutlet.id
+        ).filter(
+            User.id_user == talent_id
+        ).limit(1)
 
+        data = db.execute(query).one_or_none()
+
+        if not data:
+            raise ValueError("Talent not found")
+
+        # Query to fetch user shift information
+        shift_query = select(
+            ShiftSchedule.id_shift,
+            ShiftSchedule.day,
+            ShiftSchedule.time_start,
+            ShiftSchedule.time_end
+        ).filter(
+            ShiftSchedule.emp_id == data.id,  # Adjusted to use data.id
+            ShiftSchedule.isact == True
+        )
+
+        shifts = db.execute(shift_query).all()
+
+        shift_responses = [
+            ShiftResponse(
+                shift_id=shift.id_shift,
+                day=shift.day,
+                start_time=shift.time_start.strftime("%H:%M"),
+                end_time=shift.time_end.strftime("%H:%M")
+            ) for shift in shifts
+        ]
+
+        # Query to fetch contract information
+        contract_query = select(
+            Contract.start,
+            Contract.end,
+            Contract.file
+        ).filter(
+            Contract.emp_id == data.id,  # Adjusted to use data.id
+            Contract.isact == True
+        ).limit(1)
+
+        contract_data = db.execute(contract_query).one_or_none()
+
+        contract_management = None
+        if contract_data:
+            contract_management = ContractManagement(
+                start_date=contract_data.start.strftime("%d-%m-%Y") if contract_data.start else None,
+                end_date=contract_data.end.strftime("%d-%m-%Y") if contract_data.end else None,
+                file=contract_data.file
+            )
+
+        personal_info = ViewPersonalInformation(
+            talent_id=data.id_user,
+            name=data.name,
+            dob=data.birth_date.strftime("%d-%m-%Y") if data.birth_date else None,
+            nik=data.nik,
+            email=data.email,
+            phone=data.phone,
+            address=data.address,
+            face_id=data.photo  # Assuming photo is used as face_id
+        )
+
+        mapping_info = ViewMappingInformation(
+            client_id=data.client_id,
+            client_name=data.client_name,
+            client_address=data.client_address,
+            outlet_name=data.outlet_name,
+            outlet_address=data.outlet_address,
+            outlet_latitude=data.outlet_latitude,
+            outlet_longitude=data.outlet_longitude,
+            workdays=data.workdays,
+            workarg=shift_responses,
+            contract=contract_management
+        )
+
+        return ViewTalent(
+            personal=personal_info,
+            mapping=mapping_info
+        ).dict()
+
+    except Exception as e:
+        print(f"Error retrieving talent data: {e}")
+        raise ValueError("Failed to retrieve talent data")
+        
 async def add_user_validator(db: Session, payload: RegisTalentRequest):
     try:
         errors = None

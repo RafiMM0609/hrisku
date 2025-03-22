@@ -14,6 +14,7 @@ class Contract(Base):
     end = Column(Date, nullable=True)
     period = Column(Integer, nullable=True)
     file = Column(String(255), nullable=True)
+    file_name = Column(String(100), nullable=True)
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)
     created_at = Column(DateTime(timezone=True))

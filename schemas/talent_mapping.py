@@ -69,6 +69,19 @@ class ContractManagement(BaseModel):
     end_date:str
     file:Optional[str]=None
 
+class HistoryContract(BaseModel):
+    start_date:Optional[str]=None
+    end_date:Optional[str]=None
+    file:Optional[str]=None
+    file_name:Optional[str]=None
+
+class DataContractManagement(BaseModel):
+    start_date:Optional[str]=None
+    end_date:Optional[str]=None
+    file:Optional[str]=None
+    history:Optional[HistoryContract]=None
+    
+
 class RegisTalentRequest(BaseModel):
     photo: Optional[str] = None
     name: str

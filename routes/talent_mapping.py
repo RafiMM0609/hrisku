@@ -39,6 +39,7 @@ from schemas.talent_mapping import (
     RegisTalentRequest,
     EditTalentRequest,
     ViewTalent,
+    ViewTalentResponse,
 )
 # from core.file import generate_link_download
 from repository import talent_mapping as TalentRepo
@@ -182,7 +183,7 @@ async def detail_route(
 ViewTalentData
 @router.get("/view/{talent_id}",
     responses={
-        "200": {"model": ViewTalent},
+        "200": {"model": ViewTalentResponse},
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },

@@ -23,6 +23,10 @@ from schemas.talent_mapping import (
     ShiftEdit,
     ContractManagement,
     DetailTalentMapping,
+    Organization, 
+    ShiftResponse, 
+    DataContractManagement, 
+    HistoryContract,
 )
 import os
 import asyncio

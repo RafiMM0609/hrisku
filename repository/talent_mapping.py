@@ -27,9 +27,16 @@ from schemas.talent_mapping import (
     ShiftResponse, 
     DataContractManagement, 
     HistoryContract,
+    ViewTalent,
 )
 import os
 import asyncio
+
+async def ViewTalentData(
+    db:Session,
+    talent_id:str
+)->ViewTalent:
+    
 
 async def add_user_validator(db: Session, payload: RegisTalentRequest):
     try:

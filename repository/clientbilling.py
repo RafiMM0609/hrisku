@@ -53,6 +53,9 @@ async def list_billing_action(
         basic_salary = client.basic_salary
         total_employee = len(client.user_client)
         total_nominal += basic_salary * total_employee
+        # Set biaya operasional to basic salary if no employee
+        if total_nominal == 0:
+            total_nominal = basic_salary
 
         # Biaya Operasional
         detail_items.append(
@@ -69,7 +72,7 @@ async def list_billing_action(
             total_nominal += allowance_amount
             detail_items.append(
             ListDetailKeterangan(
-                keterangan=f"Allowance: {allowance.name}",
+                keterangan=f"Allowance {allowance.name}",
                 nominal=allowance_amount,
                 jumlah=None  # Not updating jumlah for individual items
             )
@@ -81,7 +84,7 @@ async def list_billing_action(
             total_nominal += bpjs_amount
             detail_items.append(
             ListDetailKeterangan(
-                keterangan=f"BPJS: {bpjs.name}",
+                keterangan=f"BPJS {bpjs.name}",
                 nominal=bpjs_amount,
                 jumlah=None  # Not updating jumlah for individual items
             )
@@ -101,7 +104,7 @@ async def list_billing_action(
         total_nominal += agency_fee
         detail_items.append(
             ListDetailKeterangan(
-                keterangan=f"Agency Fee {client.fee_agency}",
+                keterangan=f"Agency Fee {client.fee_agency}%",
                 nominal=agency_fee,
                 jumlah=None  # Not updating jumlah for individual items
             )
@@ -122,7 +125,7 @@ async def list_billing_action(
             total_nominal += amount_tax
             detail_items.append(
             ListDetailKeterangan(
-                keterangan=f"Tax: {tax.name}-{tax.percent}",
+                keterangan=f"{tax.name} {tax.percent}%",
                 nominal=tax_nominal,
                 jumlah=None  # Not updating jumlah for individual items
             )
@@ -139,6 +142,7 @@ async def list_billing_action(
         
         # Create response object
         result = ListDetailBillingAction(
+            title=f"Laporan Pengeluaran Biaya Program",
             client_id=client.id,
             client_name=client.name,
             start_period=month_year,
@@ -245,7 +249,8 @@ async def list_detail_cb(
                 total_talent= len(item.clients.user_client) if hasattr(item, 'clients') else 0,
                 status=Organization(id=item.status_id if hasattr(item, 'status_id') else 0, 
                                    name="dummy"),
-                evidence_payment=generate_link_download(item.evidence_payment) if hasattr(item, 'evidence_payment') else ""
+                evidence_payment=generate_link_download(item.evidence_payment) if hasattr(item, 'evidence_payment') else "",
+                verify=item.status_id == 1 if hasattr(item, 'status_id') else False
             ).model_dump())
         
         return (result, num_data, num_page)

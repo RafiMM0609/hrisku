@@ -5,6 +5,11 @@ class Organization(BaseModel):
     id:int
     name:str
 
+class ClientData(BaseModel):
+    id:str
+    name:str
+    address:str
+
 class MetaResponse(BaseModel):
     count:int
     page_count:int
@@ -64,7 +69,7 @@ class DataWorkingArrangement(BaseModel):
     time_start:str="08:00"
     time_end:str="15:00"
 class TalentMapping(BaseModel):
-    client:Optional[Organization]=None
+    client:Optional[ClientData]=None
     outlet:Optional[DataOutlet]=None
     workdays:int=5
     workarr:List[DataWorkingArrangement]
@@ -120,3 +125,22 @@ class ContractManagementResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class AttendanceData(BaseModel):
+    total_workdays: int
+    id: int
+    date : str
+    location: Optional[str] = None
+    clock_in: Optional[str] = None
+    clock_out: Optional[str] = None
+
+class LeaveSubmission(BaseModel):
+    total_pending: int
+    type: str
+    date_period: int
+    start_date: str
+    end_date: str
+    note: Optional[str] = None
+    evidence: Optional[str] = None
+    file_name: Optional[str] = None
+    status: Optional[str] = None

@@ -43,6 +43,7 @@ class ListDetailBilling(BaseModel):
     total_talent: int
     status: Organization
     evidence_payment: str
+    verify: Optional[bool]=False
     @classmethod
     def validate_date(cls, date: str) -> bool:
         # Regex to match "Month YYYY" format
@@ -62,6 +63,7 @@ class ListDetailKeterangan(BaseModel):
     jumlah: Optional[float]=None
 
 class ListDetailBillingAction(BaseModel):
+    title: str
     client_id: int
     client_name: str
     start_period: str

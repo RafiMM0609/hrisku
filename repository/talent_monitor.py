@@ -26,6 +26,7 @@ from schemas.talent_monitor import (
     ContractManagement,
     DataContractManagement,
     HistoryContract,
+    ClientData,
 )
 import os
 import asyncio
@@ -84,9 +85,10 @@ async def data_talent_mapping(
             work_arrangements.append(DataWorkingArrangement())
         
         # Create output using the proper pydantic models
-        client_org = Organization(
-            id=client.id if client else None,
-            name=client.name if client else None
+        client_org = ClientData(
+            id=client.id_client if client else None,
+            name=client.name if client else None,
+            address=client.address if client else None
         ) if client else None
         
         outlet_data = DataOutlet(

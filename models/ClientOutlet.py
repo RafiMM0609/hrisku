@@ -12,6 +12,7 @@ from sqlalchemy.orm import relationship
 from models import Base
 from models.UserRole import UserRole
 from models.RolePermission import RolePermission
+from models.Attendance import Attendance
 
 
 class ClientOutlet(Base):
@@ -25,8 +26,8 @@ class ClientOutlet(Base):
     area = Column(String, nullable=True)
     address = Column(String, nullable=True)
     # longitude = Column(Float, nullable=True)
-    longitude = Column(Numeric(10, 6), nullable=True)
     # latitude = Column(Float, nullable=True)
+    longitude = Column(Numeric(10, 6), nullable=True)
     latitude = Column(Numeric(10, 6), nullable=True)
     created_by = Column(String(36),nullable=True)
     updated_by = Column(String(36),nullable=True)
@@ -37,4 +38,5 @@ class ClientOutlet(Base):
 
     client = relationship("Client", back_populates="outlets")
     outlet_user = relationship("User", back_populates="user_outlet")
+    attendance_outlet = relationship("Attendance", back_populates="outlets")
     # outlet_user = relationship("User", back_populates="user_outlet", foreign_keys=[User.outlet_id])

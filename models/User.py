@@ -7,6 +7,7 @@ from models.UserRole import UserRole
 from models.Role import Role
 from models.Client import Client
 from models.ShiftSchedule import ShiftSchedule
+from models.Attendance import Attendance
 
 class User(Base):
     __tablename__ = "user"
@@ -38,5 +39,6 @@ class User(Base):
     user_shift = relationship("ShiftSchedule", back_populates="users", foreign_keys=[ShiftSchedule.emp_id])
     user_outlet = relationship("ClientOutlet", back_populates="outlet_user", foreign_keys=[outlet_id])
     contract_user = relationship("Contract", back_populates="users")
+    attendance_user = relationship("Attendance", back_populates="users")
     # Many to Many
     roles = relationship("Role", secondary=UserRole, back_populates="users")

@@ -211,7 +211,7 @@ async def view_talent_route(
     
 @router.delete("/{talent_id}",
     responses={
-        "201": {"model": CudResponschema},  # Changed 201 to 200 for consistency with DELETE semantics
+        "200": {"model": CudResponschema},  # Changed 201 to 200 for consistency with DELETE semantics
         "400": {"model": BadRequestResponse},
         "500": {"model": InternalServerErrorResponse},
     },
@@ -234,8 +234,7 @@ async def delete_talent_route(
             return common_response(BadRequest(message="Talent deletion failed. Please verify the talent ID."))
         return common_response(CudResponse(
             message="Successfully deleted talent data."
-            )  # Improved success message for clarity
-        )
+        ))
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
     

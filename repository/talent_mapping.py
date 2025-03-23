@@ -76,10 +76,10 @@ async def map_shift_to_calendar(emp_id: str, start_time: str, end_time: str, day
         print(f"Error mapping shift to calendar: {e}")
         raise ValueError("Failed to map shift to calendar")
 
-async def delete_talent(db: Session, user:User, id_user: str):
+async def delete_talent(db: Session, user:User, talent_id: str):
     try:
         exist_data = db.execute(
-            select(User).filter(User.id_user == id_user)
+            select(User).filter(User.id_user == talent_id)
         ).scalar_one_or_none()
         if not exist_data:
             raise ValueError("User not found")

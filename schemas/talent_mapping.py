@@ -58,6 +58,7 @@ class HistoryContract(BaseModel):
     file_name:Optional[str]=None
 
 class DataContractManagement(BaseModel):
+    id:int
     start_date:Optional[str]=None
     end_date:Optional[str]=None
     file:Optional[str]=None
@@ -78,6 +79,12 @@ class DetailTalentMapping(BaseModel):
     contract:Optional[DataContractManagement]=None
 
 class ContractManagement(BaseModel):
+    start_date:str
+    end_date:str
+    file:Optional[str]=None
+
+class EditContractManagement(BaseModel):
+    id:int
     start_date:str
     end_date:str
     file:Optional[str]=None
@@ -109,6 +116,7 @@ class EditTalentRequest(BaseModel):
     outlet_id : int
     shift: Optional[List[ShiftEdit]]
     workdays: Optional[int]
+    contract: Optional[EditContractManagement]
     
     
 class ViewPersonalInformation(BaseModel):
@@ -119,7 +127,7 @@ class ViewPersonalInformation(BaseModel):
     email : str
     phone : str
     address : str
-    face_id : st
+    face_id : Optional[str]=None
     
 class ViewMappingInformation(BaseModel):
     client_id : str
@@ -129,7 +137,7 @@ class ViewMappingInformation(BaseModel):
     outlet_address : str
     outlet_latitude : float
     outlet_longitude : float
-    workdays : int
+    workdays : Optional[int] = None
     workarg : Optional[List[ShiftResponse]]
     contract : Optional[ContractManagement]
     
@@ -140,6 +148,13 @@ class ViewTalent(BaseModel):
 class ViewTalentResponse(BaseModel):
     meta: MetaResponse
     data: ViewTalent
+    status: str
+    code: int
+    message: str
+
+class HistoryContractResponse(BaseModel):
+    meta: MetaResponse
+    data: HistoryContract
     status: str
     code: int
     message: str

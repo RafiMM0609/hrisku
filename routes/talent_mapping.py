@@ -40,6 +40,7 @@ from schemas.talent_mapping import (
     EditTalentRequest,
     ViewTalent,
     ViewTalentResponse,
+    HistoryContractResponse,
 )
 # from core.file import generate_link_download
 from repository import talent_mapping as TalentRepo
@@ -72,7 +73,7 @@ async def add_route(
             payload=payload,
             background_tasks=background_tasks,
         )
-        return common_response(Ok(
+        return common_response(CudResponse(
             message="Success add data"
             )
         )
@@ -145,7 +146,7 @@ async def edit_route(
             background_tasks=background_tasks,
             payload=payload,
         )
-        return common_response(Ok(
+        return common_response(CudResponse(
             message="Success edit data"
             )
         )
@@ -180,7 +181,6 @@ async def detail_route(
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
         
-ViewTalentData
 @router.get("/view/{talent_id}",
     responses={
         "200": {"model": ViewTalentResponse},
@@ -206,5 +206,64 @@ async def view_talent_route(
             data=talent_data,
             )
         )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.delete("/{talent_id}",
+    responses={
+        "201": {"model": CudResponschema},  # Changed 201 to 200 for consistency with DELETE semantics
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def delete_talent_route(
+    talent_id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        success = await TalentRepo.delete_talent(
+            db=db,
+            talent_id=talent_id,
+            user=user,
+        )
+        if not success:
+            return common_response(BadRequest(message="Talent deletion failed. Please verify the talent ID."))
+        return common_response(CudResponse(
+            message="Successfully deleted talent data."
+            )  # Improved success message for clarity
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/history/{talent_id}",
+    responses={
+        "200": {"model": HistoryContractResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def contract_talent_history_route(
+    talent_id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        history = await TalentRepo.get_contract_history(
+            db=db,
+            talent_id=talent_id,
+        )
+        if not history:
+            return common_response(BadRequest(message="No contract history found for the given talent ID."))
+        return common_response(Ok(
+            message="Successfully retrieved contract history.",
+            data=history
+        ))
     except Exception as e:
         return common_response(BadRequest(message=str(e)))

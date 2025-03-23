@@ -28,6 +28,9 @@ from schemas.talent_mapping import (
     DataContractManagement, 
     HistoryContract,
     ViewTalent,
+    ViewPersonalInformation,
+    ViewMappingInformation,
+    EditContractManagement,
 )
 import os
 import asyncio
@@ -73,6 +76,22 @@ async def map_shift_to_calendar(emp_id: str, start_time: str, end_time: str, day
         print(f"Error mapping shift to calendar: {e}")
         raise ValueError("Failed to map shift to calendar")
 
+async def delete_talent(db: Session, user:User, id_user: str):
+    try:
+        exist_data = db.execute(
+            select(User).filter(User.id_user == id_user)
+        ).scalar_one_or_none()
+        if not exist_data:
+            raise ValueError("User not found")
+        exist_data.isact=False
+        exist_data.updated_at=datetime.now(tz=timezone(TZ))
+        exist_data.updated_by=user.id
+        db.add(exist_data)
+        db.commit()
+        return "oke"
+    except Exception as e:
+        print("Error delete talent: \n", e)
+        raise ValueError("Failed delete talent")
 async def ViewTalentData(
     db: Session,
     talent_id: str
@@ -89,7 +108,7 @@ async def ViewTalentData(
             User.phone,
             User.address,
             User.photo,
-            Client.id.label('client_id'),
+            Client.id_client.label('client_id'),
             Client.name.label('client_name'),
             Client.address.label('client_address'),
             ClientOutlet.name.label('outlet_name'),
@@ -114,7 +133,8 @@ async def ViewTalentData(
             ShiftSchedule.id_shift,
             ShiftSchedule.day,
             ShiftSchedule.time_start,
-            ShiftSchedule.time_end
+            ShiftSchedule.time_end,
+            ShiftSchedule.workdays
         ).filter(
             ShiftSchedule.emp_id == data.id,  # Adjusted to use data.id
             ShiftSchedule.isact == True
@@ -170,7 +190,7 @@ async def ViewTalentData(
             outlet_address=data.outlet_address,
             outlet_latitude=data.outlet_latitude,
             outlet_longitude=data.outlet_longitude,
-            workdays=data.workdays,
+            workdays=shifts[0].workdays if shifts else None,
             workarg=shift_responses,
             contract=contract_management
         )
@@ -270,50 +290,56 @@ async def add_talent(
                 payload.workdays
             )
     except Exception as e:
+        # Set all existing users with the same ID to inactive
+        db.execute(
+            update(User).where(User.id == new_user.id, User.id != new_user.id).values(isact=False)
+        )
+        db.commit()
         print("Error regis talent : \n", e)
         raise ValueError("Failed regis talent")
 
-    async def add_contract(emp_id: str, payload: ContractManagement):
-        """
-        Insert contract data for a talent into the Contract table.
+async def add_contract(emp_id: str, payload: ContractManagement):
+    """
+    Insert contract data for a talent into the Contract table.
+    
+    Args:
+        db (Session): Database session
+        emp_id (str): Talent ID
+        payload (ContractManagement): Contract details
+    """
+    db = SessionLocal()  # Ambil koneksi dari pool
+    try:            
+        # Parse dates
+        start_date = datetime.strptime(payload.start_date, "%d-%m-%Y").date()
+        end_date = datetime.strptime(payload.end_date, "%d-%m-%Y").date()
         
-        Args:
-            db (Session): Database session
-            emp_id (str): Talent ID
-            payload (ContractManagement): Contract details
-        """
-        db = SessionLocal()  # Ambil koneksi dari pool
-        try:            
-            # Parse dates
-            start_date = datetime.strptime(payload.start_date, "%d-%m-%Y").date()
-            end_date = datetime.strptime(payload.end_date, "%d-%m-%Y").date()
-            
-            # Calculate period in months (approximate)
-            delta = end_date - start_date
-            # Simply get the year from the end date
-            period = end_date.year
-            
-            new_contract = Contract(
-                emp_id=emp_id,
-                start=start_date,
-                end=end_date,
-                period=int(period),
-                file=payload.file,
-                created_at=datetime.now(tz=timezone(TZ)),
-                isact=True
-            )
-            
-            db.add(new_contract)
-            db.commit()
-            
-            return "oke"
-            
-        except Exception as e:
-            db.rollback()
-            print(f"Error adding contract: {e}")
-            raise ValueError(f"Failed to add contract")
-        finally:
-            db.close()  # Jangan lupa close agar tidak bocor
+        # Calculate period in months (approximate)
+        delta = end_date - start_date
+        # Simply get the year from the end date
+        period = end_date.year
+        
+        new_contract = Contract(
+            emp_id=emp_id,
+            start=start_date,
+            end=end_date,
+            period=int(period),
+            file=payload.file,
+            file_name=payload.file.split("-")[0],
+            created_at=datetime.now(tz=timezone(TZ)),
+            isact=True
+        )
+        
+        db.add(new_contract)
+        db.commit()
+        
+        return "oke"
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error adding contract: {e}")
+        raise ValueError(f"Failed to add contract")
+    finally:
+        db.close()  # Jangan lupa close agar tidak bocor
 
 async def add_mapping_schedule(client_id, emp_id, shift, workdays):
     db = SessionLocal()  # Ambil koneksi dari pool
@@ -411,7 +437,7 @@ async def edit_talent(
     id_user: str,
     user:User,
     background_tasks:any,
-    payload: RegisTalentRequest,
+    payload: EditTalentRequest,
     role_id: int = 1,
 ):
     try:
@@ -443,23 +469,67 @@ async def edit_talent(
                 payload.workdays,
                 user.id
             )
-            # db.execute(
-            #     update(ShiftSchedule)
-            #     .where(ShiftSchedule.emp_id==user_exist.id)
-            #     .values(isact=False)
-            # )
-            # db.commit()
-            # await mapping_schedule(
-            #     db, 
-            #     user_exist.client_id,
-            #     user_exist.id, 
-            #     payload.shift, 
-            #     payload.workdays
-            # )
+        background_tasks.add_task(
+            edit_contract,
+            user.id,
+            user_exist.id,
+            payload.contract,
+        )
     except Exception as e:
         print("Error regis talent : \n", e)
         raise ValueError("Failed regis talent")
     
+
+
+async def edit_contract(user_id:str, emp_id: str, payload: EditContractManagement):
+    """
+    Edit contract data for a talent in the Contract table.
+    
+    Args:
+        db (Session): Database session
+        emp_id (str): Talent ID
+        payload (EditContractManagement): Updated contract details
+    """
+    db = SessionLocal()  # Ambil koneksi dari pool
+    try:
+        # Parse dates
+        start_date = datetime.strptime(payload.start_date, "%d-%m-%Y").date()
+        end_date = datetime.strptime(payload.end_date, "%d-%m-%Y").date()
+        
+        # Calculate period in months (approximate)
+        # delta = end_date - start_date
+        period = end_date.year  # Simply get the year from the end date
+        
+        # Fetch the existing contract
+        contract_query = select(Contract).filter(
+            Contract.id == payload.id,
+            Contract.emp_id == emp_id,
+            Contract.isact == True
+        ).limit(1)
+        existing_contract = db.execute(contract_query).scalar_one_or_none()
+        
+        if not existing_contract:
+            raise ValueError("Contract not found for the given employee ID")
+        
+        # Update contract details
+        existing_contract.start = start_date
+        existing_contract.end = end_date
+        existing_contract.period = int(period)
+        existing_contract.file = payload.file
+        existing_contract.file_name = payload.file.split("-")[0] if payload.file else None
+        existing_contract.updated_at = datetime.now(tz=timezone(TZ))
+        existing_contract.updated_by = user_id
+        
+        db.commit()
+        return "Contract updated successfully"
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error editing contract: {e}")
+        raise ValueError(f"Failed to edit contract")
+    finally:
+        db.close()  # Ensure the connection is closed
+
 async def edit_schedule(client_id, emp_id, shift:List[ShiftEdit], workdays, user_id):
     db = SessionLocal()  # Ambil koneksi dari pool
     db.execute(
@@ -607,9 +677,10 @@ async def formating_detail(data: User) -> DetailTalentMapping:
                 end_date=h.end.strftime("%d-%m-%Y") if h.end else None,
                 file=h.file,
                 file_name=h.file_name
-            ) for h in (contract.history or [])
+            ) for h in (data.contract_user or [])
         ]
         contract_data = DataContractManagement(
+            id=contract.id,
             start_date=contract.start.strftime("%d-%m-%Y") if contract.start else None,
             end_date=contract.end.strftime("%d-%m-%Y") if contract.end else None,
             file=contract.file,
@@ -644,3 +715,30 @@ async def formating_detail(data: User) -> DetailTalentMapping:
         ],
         contract=contract_data
     ).dict()
+
+async def get_contract_history(
+    db: Session,
+    talent_id: str,
+) -> List[HistoryContract]:
+    try:
+        emp_id = db.execute(
+            select(User.id).filter(User.id_user == talent_id)
+        ).scalar_one_or_none()
+        if not emp_id:
+            raise ValueError("Talent not found")
+        query = select(Contract).filter(Contract.emp_id == emp_id, Contract.isact == True)
+        data = db.execute(query).scalars().all()
+        if not data:
+            return []
+
+        return [
+            HistoryContract(
+                start_date=d.start.strftime("%d-%m-%Y") if d.start else None,
+                end_date=d.end.strftime("%d-%m-%Y") if d.end else None,
+                file=d.file,
+                file_name=d.file_name
+            ).dict() for d in data
+        ]
+    except Exception as e:
+        print("Error retrieving contract history: \n", e)
+        raise ValueError("Failed to retrieve contract history")

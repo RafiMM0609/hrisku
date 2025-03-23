@@ -7,6 +7,7 @@ from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
 from models.User import User
 from models.Role import Role
+from models.UserRole import UserRole
 from models.ShiftSchedule import ShiftSchedule
 from models.Client import Client
 from models.ClientOutlet import ClientOutlet
@@ -108,6 +109,8 @@ async def ViewTalentData(
             User.phone,
             User.address,
             User.photo,
+            Role.id.label('role_id'),
+            Role.name.label('role_name'),
             Client.id_client.label('client_id'),
             Client.name.label('client_name'),
             Client.address.label('client_address'),
@@ -119,6 +122,10 @@ async def ViewTalentData(
             Client, User.client_id == Client.id
         ).join(
             ClientOutlet, User.outlet_id == ClientOutlet.id
+        ).join(
+            UserRole, User.id == UserRole.c.emp_id
+        ).join(
+            Role, UserRole.c.role_id == Role.id
         ).filter(
             User.id_user == talent_id
         ).limit(1)
@@ -162,7 +169,6 @@ async def ViewTalentData(
         ).limit(1)
 
         contract_data = db.execute(contract_query).one_or_none()
-
         contract_management = None
         if contract_data:
             contract_management = ContractManagement(
@@ -174,6 +180,10 @@ async def ViewTalentData(
         personal_info = ViewPersonalInformation(
             talent_id=data.id_user,
             name=data.name,
+            role=Organization(
+                id=data.role_id,
+                name=data.role_name
+            ),
             dob=data.birth_date.strftime("%d-%m-%Y") if data.birth_date else None,
             nik=data.nik,
             email=data.email,

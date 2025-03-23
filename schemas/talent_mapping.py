@@ -122,6 +122,7 @@ class EditTalentRequest(BaseModel):
 class ViewPersonalInformation(BaseModel):
     talent_id : str
     name :str
+    role : Organization
     dob : str
     nik : str
     email : str

@@ -40,9 +40,13 @@ from schemas.talent_monitor import (
     TalentMappingResponse,
     DataContratResponse,
     ContractManagementResponse,
+    TalentAttendanceResponse,
+    TalentTimesheetResponse,
+
 )
 # from core.file import generate_link_download
 from repository import talent_monitor as TalentRepo
+from datetime import date, datetime
 
 router = APIRouter(tags=["Talent Monitor"])
     
@@ -167,3 +171,76 @@ async def contract_management_route(
         )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+
+@router.get("/attendance/{talent_id}",
+    responses={
+        "200": {"model": TalentAttendanceResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def talent_attendance_route(
+    talent_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        if start_date:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        if end_date:
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        attendance_data = await TalentRepo.get_talent_attendance(
+            db=db,
+            user_id=talent_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        return common_response(Ok(
+            data=attendance_data,
+            message="Success get attendance data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/timesheet/{talent_id}",
+    responses={
+        "200": {"model": TalentTimesheetResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def talent_timesheet_route(
+    talent_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        if start_date:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        if end_date:
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        attendance_data = await TalentRepo.get_talent_timesheet(
+            db=db,
+            user_id=talent_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        return common_response(Ok(
+            data=attendance_data,
+            message="Success get attendance data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+

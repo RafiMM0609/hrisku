@@ -12,7 +12,9 @@ from models.Contract import Contract
 from models.ClientOutlet import ClientOutlet
 from models.ShiftSchedule import ShiftSchedule
 from models.UserRole import UserRole
-from datetime import datetime, timedelta
+from models.Attendance import Attendance
+from models.LeaveTable import LeaveTable
+from datetime import datetime, timedelta, date
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
 from fastapi import UploadFile
@@ -27,11 +29,206 @@ from schemas.talent_monitor import (
     DataContractManagement,
     HistoryContract,
     ClientData,
+    TalentAttendance,
+    LeaveSubmission,
+    AttendanceGraphData,
+    AttendanceData,
+    TalentTimesheet,
+    TimeSheetHistory,
+    PerformanceHistory,
+    TalentPerformance,
 )
 import os
 import asyncio
 
+async def get_talent_performance(
+    db:Session,
+    user_id:str,
+)->TalentPerformance:
+    try:
+        # Fetch user details
+        user_query = db.execute(select(User).where(User.id_user == user_id))
+        user = user_query.scalar_one_or_none()
+        if not user:
+            raise ValueError("User not found")
+        ls_performance = []
+        for item in user.performance_user:
+            ls_performance.append(PerformanceHistory(
+                date=item.date.strftime("%A, %d %B %Y") if item.date else None,
+                softskill=item.softskill,
+                hardskill=item.hardskill,
+                total_point=item.softskill+item.hardskill,
+                notes=item.note
+             ))
+        
+        # Determine performance level based on current month's total points
+        current_month = datetime.now().month
+        current_year = datetime.now().year
+        
+        # Find most recent performance record for current month
+        current_month_performance = next(
+            (p for p in user.performance_user if p.date and 
+             p.date.month == current_month and 
+             p.date.year == current_year),
+            None
+        )
+        
+        performance_level = "Not Available"
+        if current_month_performance:
+            total_point = current_month_performance.softskill + current_month_performance.hardskill
+            if total_point > 8:
+                performance_level = "Excellent"
+            elif total_point > 5:
+                performance_level = "Meet Expectations"
+            else:
+                performance_level = "Needs Improvement"
+                
+        return TalentPerformance(
+            name=user.name,
+            role_name=user.roles[0].name if user.roles else None,
+            performance=performance_level,
+            history=ls_performance
+        ).dict()
+    except Exception as e:
+        print("Error get talent performance: \n",e)
+        raise ValueError("Failed get talent performance")
 
+async def get_talent_timesheet(
+    db:Session,
+    user_id:str,
+    start_date:date=None,
+    end_date:date=None
+)->TalentTimesheet:
+    try:
+        # Set default date range if not provided
+        if not start_date:
+            start_date = date.today() - timedelta(days=30)
+        if not end_date:
+            end_date = date.today()
+
+        # Fetch user details
+        user_query = db.execute(select(User).where(User.id_user == user_id))
+        user = user_query.scalar_one_or_none()
+        if not user:
+            raise ValueError("User not found")
+        
+        # Filter timesheet records by date range
+        filtered_timesheet = [
+            ts for ts in user.timesheet_user 
+            if (ts.date and start_date <= ts.date <= end_date)
+        ]
+        
+        timesheet = []
+        for history in filtered_timesheet:
+            timesheet.append(TimeSheetHistory(
+                # Use the date field for formatting, not clock_out
+                date=history.date.strftime("%A, %d %B %Y") if history.date else None,
+                working_hours=history.total_hours,
+                notes=history.note
+            ))
+            
+        return TalentTimesheet(
+            name=user.name,
+            role_name=user.roles[0].name if user.roles else None,
+            total_workdays=len(filtered_timesheet),
+            timesheet=timesheet
+        ).dict()
+    except Exception as e:
+        print("Error get talent timesheet: \n",e)
+        raise ValueError("Failed get talent timesheet")
+
+async def get_talent_attendance(
+    db: Session , 
+    user_id: str, 
+    start_date: date = None, 
+    end_date: date = None
+) -> TalentAttendance:
+    try:
+        # Set default date range (last 30 days)
+        if not start_date:
+            start_date = date.today() - timedelta(days=30)
+        if not end_date:
+            end_date = date.today()
+
+        # Fetch user details
+        user_query = db.execute(select(User).where(User.id_user == user_id))
+        user = user_query.scalar_one_or_none()
+        if not user:
+            raise ValueError("User not found")
+
+        # Fetch attendance data within the date range
+        attendance_query = db.execute(
+            select(Attendance).where(
+                Attendance.emp_id == user_id,
+                Attendance.date >= start_date,
+                Attendance.date <= end_date
+            )
+        )
+        attendance_records = attendance_query.scalars().all()
+        attendance_data = [
+            AttendanceData(
+                total_workdays=len(attendance_records),  # Count of attendance records
+                id=record.id,
+                date=record.date.strftime("%A, %d %B %Y") if record.date else None,
+                location=record.outlets.name if record.outlets  else None,  # Add location if available
+                clock_in=record.clock_in.strftime("%H:%M") if record.clock_in else None,
+                clock_out=record.clock_out.strftime("%H:%M") if record.clock_out else None,
+            )
+            for record in attendance_records
+        ]
+
+        # Fetch leave submissions within the date range
+        leave_query = db.execute(
+            select(LeaveTable).where(
+                LeaveTable.emp_id == user.id,
+                LeaveTable.start_date >= start_date,
+                LeaveTable.end_date <= end_date
+            )
+        )
+        leave_records = leave_query.scalars().all()
+        leave_submissions = [
+            LeaveSubmission(
+                total_pending=0,  # Placeholder, calculate if needed
+                type=record.type,
+                date_period=(record.end_date - record.start_date).days if record.start_date and record.end_date else 0,
+                start_date=record.start_date.strftime("%d %B %Y") if record.start_date else None,
+                end_date=record.end_date.strftime("%d %B %Y") if record.end_date else None,
+                note=record.note,
+                evidence=record.evidence,
+                file_name=None,  # Add file name if available
+                status=record.status,
+            )
+            for record in leave_records
+        ]
+
+        # Calculate attendance graph data based on status
+        graph_query = db.execute(
+            select(
+                Attendance.status,
+                func.count(Attendance.id).label("count")
+            ).where(
+                Attendance.emp_id == user.id,
+                Attendance.date >= start_date,
+                Attendance.date <= end_date
+            ).group_by(Attendance.status)
+        )
+        graph_results = graph_query.all()
+        graph_data = [
+            AttendanceGraphData(type=result.status, desktop=result.count)
+            for result in graph_results
+        ]
+
+        # Construct TalentAttendance response
+        return TalentAttendance(
+            name=user.name,
+            role_name="Role Name Placeholder",  # Replace with actual role name
+            attendance=attendance_data,
+            leave_submission=leave_submissions,
+            graph=graph_data,
+        ).dict()
+    except Exception as e:
+        print(f"Error getting talent attendance: {e}")
+        raise ValueError("Failed to get talent attendance data")
 
 async def data_talent_mapping(
     db: Session,

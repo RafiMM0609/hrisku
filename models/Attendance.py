@@ -13,6 +13,7 @@ from sqlalchemy.orm import relationship
 from models import Base
 from models.UserRole import UserRole
 from models.RolePermission import RolePermission
+from models.LeaveTable import LeaveTable
 
 
 class Attendance(Base):
@@ -27,7 +28,7 @@ class Attendance(Base):
     clock_out = Column(Time, nullable=True)
     longitude = Column(Numeric(10, 6), nullable=True)
     latitude = Column(Numeric(10, 6), nullable=True)
-    is_leave = Column(Boolean, default=False)
+    status = Column(String(100), nullable=True)  # Updated to store attendance type
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)
     created_at = Column(DateTime(timezone=True))
@@ -37,3 +38,4 @@ class Attendance(Base):
     # Many to Many
     users = relationship("User", back_populates="attendance_user", foreign_keys=[emp_id])
     outlets = relationship("ClientOutlet", back_populates="attendance_outlet", foreign_keys=[loc_id])
+    attendance_leave = relationship("LeaveTable", back_populates="attendances")

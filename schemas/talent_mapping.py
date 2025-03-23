@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 class Organization(BaseModel):
     id:int
@@ -39,17 +39,39 @@ class ShiftRequest(BaseModel):
     day: str
     start_time : str = "08:00"
     end_time : str = "15:00"
+    
+    @validator('day')
+    def validate_day(cls, v):
+        valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        if v not in valid_days:
+            raise ValueError(f"Day must be one of the following: {', '.join(valid_days)}")
+        return v
+
 class ShiftEdit(BaseModel):
     id_shift:Optional[str]=None
     day: str
     start_time : str = "08:00"
     end_time : str = "15:00"
+    
+    @validator('day')
+    def validate_day(cls, v):
+        valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        if v not in valid_days:
+            raise ValueError(f"Day must be one of the following: {', '.join(valid_days)}")
+        return v
 
 class ShiftResponse(BaseModel):
     shift_id:str
     day: str
     start_time : str = "08:00"
     end_time : str = "15:00"
+    
+    @validator('day')
+    def validate_day(cls, v):
+        valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        if v not in valid_days:
+            raise ValueError(f"Day must be one of the following: {', '.join(valid_days)}")
+        return v
 
 class HistoryContract(BaseModel):
     start_date:Optional[str]=None
@@ -100,9 +122,9 @@ class RegisTalentRequest(BaseModel):
     address: str
     client_id : int
     outlet_id : int
-    shift: Optional[List[ShiftRequest]]
-    workdays: Optional[int]
-    contract: Optional[ContractManagement]
+    shift: Optional[List[ShiftRequest]] = None
+    workdays: Optional[int] = None
+    contract: Optional[ContractManagement] = None
 
 class EditTalentRequest(BaseModel):
     photo: Optional[str] = None

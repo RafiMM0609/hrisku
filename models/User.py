@@ -4,10 +4,12 @@ from sqlalchemy.ext.declarative import declarative_base
 import uuid
 from models import Base
 from models.UserRole import UserRole
-from models.Role import Role
-from models.Client import Client
 from models.ShiftSchedule import ShiftSchedule
-from models.Attendance import Attendance
+from models.TimeSheet import TimeSheet
+from models.Performance import Performance
+from sqlalchemy.future import select
+from datetime import date, timedelta
+from sqlalchemy.sql import func
 
 class User(Base):
     __tablename__ = "user"
@@ -40,5 +42,8 @@ class User(Base):
     user_outlet = relationship("ClientOutlet", back_populates="outlet_user", foreign_keys=[outlet_id])
     contract_user = relationship("Contract", back_populates="users")
     attendance_user = relationship("Attendance", back_populates="users")
+    leave_user = relationship("LeaveTable", back_populates="users")
+    timesheet_user = relationship("TimeSheet", back_populates="users")
+    performance_user = relationship("Performance", back_populates="users")
     # Many to Many
     roles = relationship("Role", secondary=UserRole, back_populates="users")

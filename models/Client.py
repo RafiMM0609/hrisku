@@ -17,6 +17,8 @@ from models.Bpjs import Bpjs
 from models.Allowances import Allowances
 from models.ClientPayment import ClientPayment
 from models.ContractClient import ContractClient
+from models.TimeSheet import TimeSheet
+from models.Performance import Performance
 from models.Tax import Tax
 
 class Client(Base):
@@ -54,4 +56,6 @@ class Client(Base):
                                     primaryjoin="and_(ContractClient.client_id == Client.id, ContractClient.isact == True)", 
                                     order_by="ContractClient.created_at")
     client_tax = relationship("Tax", back_populates="clients", primaryjoin="and_(Tax.client_id == Client.id, Tax.isact == True)")
+    timesheet_client = relationship("TimeSheet", back_populates="clients")
+    performance_client = relationship("Performance", back_populates="clients")
 

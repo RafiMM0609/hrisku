@@ -134,13 +134,62 @@ class AttendanceData(BaseModel):
     clock_in: Optional[str] = None
     clock_out: Optional[str] = None
 
+class AttendanceGraphData(BaseModel):
+    type: str
+    desktop: int
+
 class LeaveSubmission(BaseModel):
     total_pending: int
     type: str
     date_period: int
-    start_date: str
-    end_date: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     note: Optional[str] = None
     evidence: Optional[str] = None
     file_name: Optional[str] = None
     status: Optional[str] = None
+
+class TalentAttendance(BaseModel):
+    name: str
+    role_name: str
+    attendance: List[AttendanceData]
+    leave_submission: List[LeaveSubmission]
+    graph: List[AttendanceGraphData]
+
+class TalentAttendanceResponse(BaseModel):
+    meta: MetaResponse
+    data: ContractManagement
+    status: str
+    code: int
+    message: str
+
+class TimeSheetHistory(BaseModel):
+    date:Optional[str]=None
+    working_hours:int
+    notes:Optional[str]=None
+
+class TalentTimesheet(BaseModel):
+    name: str
+    role_name: str
+    total_workdays: int
+    timesheet: Optional[List[TimeSheetHistory]]=None
+
+class TalentTimesheetResponse(BaseModel):
+    meta: MetaResponse
+    data: TalentTimesheet
+    status: str
+    code: int
+    message: str
+
+class PerformanceHistory(BaseModel):
+    date:Optional[str]=None
+    softskill:Optional[int]=0
+    hardskill:Optional[int]=0
+    total_point:Optional[str]=None
+    notes:Optional[str]=None
+
+class TalentPerformance(BaseModel):
+    name: str
+    role_name: str
+    performance: Optional[str]=None
+    history: Optional[List[PerformanceHistory]]=None

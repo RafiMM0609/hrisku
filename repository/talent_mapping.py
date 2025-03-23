@@ -180,10 +180,7 @@ async def ViewTalentData(
         personal_info = ViewPersonalInformation(
             talent_id=data.id_user,
             name=data.name,
-            role=Organization(
-                id=data.role_id,
-                name=data.role_name
-            ),
+            role_name=data.role_name,
             dob=data.birth_date.strftime("%d-%m-%Y") if data.birth_date else None,
             nik=data.nik,
             email=data.email,

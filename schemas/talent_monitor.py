@@ -87,9 +87,36 @@ class DataContrat(BaseModel):
     end_cont:str="16 October 2025"
     evidence_cont:str
     history_cont:DataHistorisCont
+
 class DataContratResponse(BaseModel):
     meta: MetaResponse
     data: DataContrat
+    status: str
+    code: int
+    message: str
+
+class HistoryContract(BaseModel):
+    start_date:Optional[str]=None
+    end_date:Optional[str]=None
+    file:Optional[str]=None
+    file_name:Optional[str]=None
+
+class DataContractManagement(BaseModel):
+    id:int
+    start_date:Optional[str]=None
+    end_date:Optional[str]=None
+    file:Optional[str]=None
+
+class ContractManagement(BaseModel):
+    talent_id:Optional[str]=None
+    talent_name:Optional[str]=None
+    talent_role:Optional[str]=None
+    contract:Optional[DataContractManagement]=None
+    history:Optional[List[HistoryContract]]=None
+
+class ContractManagementResponse(BaseModel):
+    meta: MetaResponse
+    data: ContractManagement
     status: str
     code: int
     message: str

@@ -2,12 +2,13 @@ from typing import Optional, List
 import secrets
 from math import ceil
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, joinedload
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
 from models.User import User
 from models.Role import Role
 from models.Client import Client
+from models.Contract import Contract
 from models.ClientOutlet import ClientOutlet
 from models.ShiftSchedule import ShiftSchedule
 from models.UserRole import UserRole
@@ -21,10 +22,15 @@ from schemas.talent_monitor import (
     Organization,
     TalentMapping,
     DataWorkingArrangement,
-    DataOutlet
+    DataOutlet,
+    ContractManagement,
+    DataContractManagement,
+    HistoryContract,
 )
 import os
 import asyncio
+
+
 
 async def data_talent_mapping(
     db: Session,
@@ -208,3 +214,63 @@ async def formating_talent(data:List[User]):
             "address": d.address,
         })
     return ls_data
+
+async def get_contract_management(db: Session, talent_id: str) -> ContractManagement:
+    """
+    Get contract management data for a specific talent_id.
+    """
+    try:
+        user = db.execute(
+            select(User)
+            .options(
+                joinedload(User.roles),
+                joinedload(User.contract_user)
+            )
+            .filter(User.id_user == talent_id, User.isact == True)
+        ).unique().scalar_one_or_none()
+
+        if not user:
+            raise ValueError("Talent not found")
+
+        # Extract role name
+        role_name = user.roles[0].name if user.roles else None
+
+        # Extract active contract (most recent)
+        active_contract = None
+        if user.contract_user:
+            active_contract = max(
+                user.contract_user,
+                key=lambda c: c.created_at,
+                default=None
+            )
+
+        # Format active contract data
+        active_contract_data = DataContractManagement(
+            id=active_contract.id,
+            start_date=active_contract.start.strftime("%d-%m-%Y") if active_contract and active_contract.start else None,
+            end_date=active_contract.end.strftime("%d-%m-%Y") if active_contract and active_contract.end else None,
+            file=generate_link_download(active_contract.file) if active_contract and active_contract.file else None
+        ) if active_contract else None
+
+        # Format contract history
+        history_data = [
+            HistoryContract(
+                start_date=contract.start.strftime("%d-%m-%Y") if contract.start else None,
+                end_date=contract.end.strftime("%d-%m-%Y") if contract.end else None,
+                file=generate_link_download(contract.file) if contract.file else None,
+                file_name=contract.file_name
+            )
+            for contract in sorted(user.contract_user, key=lambda c: c.created_at, reverse=True)
+        ]
+
+        # Return ContractManagement model
+        return ContractManagement(
+            talent_id=user.id_user,
+            talent_name=user.name,
+            talent_role=role_name,
+            contract=active_contract_data,
+            history=history_data
+        ).dict()
+    except Exception as e:
+        print(f"Error getting contract management: {e}")
+        raise ValueError("Failed to get contract management data")

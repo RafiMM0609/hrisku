@@ -1,4 +1,7 @@
 from email import utils
+from http.client import HTTPException
+
+import httpx
 from fastapi import APIRouter, Depends, Request, BackgroundTasks, Request, File, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -158,6 +161,34 @@ async def login(
         token = await generate_jwt_token_from_user(user=user)
         await authRepo.create_user_session(db=db, user_id=user.id, token=token)
 
+        # Extract username and password from the request
+        username = request.email
+        password = request.password
+
+        # Make an external request to the given URL
+        url = "https://face.anaratech.com/auth/token"
+        headers = {
+            "accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        data = {
+            "grant_type": "password",
+            "username": username,
+            "password": password,
+            "scope": "",
+            "client_id": "string",
+            "client_secret": "string",
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, data=data)
+
+        # Check if the external request was successful
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        # Return the response from the external service
+        data_face =  response.json()
         return common_response(
             CudResponse(
                 data={
@@ -170,6 +201,7 @@ async def login(
                         "id": user.roles[0].id
                     },
                     "token": token,
+                    "token_face_id": data_face["access_token"],
                     "change_password": not status
                 },
                 message="Login Success"

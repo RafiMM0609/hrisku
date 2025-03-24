@@ -55,3 +55,62 @@ class DataOutletResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class DataLeave(BaseModel):
+    id:int
+    type:str
+    status:Organization
+    note:Optional[str]=None
+    date_information:Optional[str]=None
+
+class DataLeaveResponse(BaseModel):
+    meta: MetaResponse
+    data: List[DataLeave]
+    status: str
+    code: int
+    message: str
+
+class DataMenuCheckout(BaseModel):
+    outlet : DataOutlet
+    user_latitude : float
+    user_longitude : float 
+    distance : float
+    clock_in : str
+    clock_out : str
+
+class DataMenuCheckoutResponse(BaseModel):
+    meta: MetaResponse
+    data: DataMenuCheckout
+    status: str
+    code: int
+    message: str
+
+class HeaderAbsensi(BaseModel):
+    total:int
+    hadir:int
+    absen:int
+    sakit:int
+    cuti:int
+    izin:int
+    terlambat:int
+    early_leave:int
+    lembur:int
+
+class HistoryAbsensi(BaseModel):
+    date:str = "22 August 2025"
+    clock_in:str
+    clock_out:str
+    duration:str = "8 jam 30 menit"
+    outlet:DataOutlet
+
+class DataMenuAbsensi(BaseModel):
+    this_month:str = "August 2025"
+    header:HeaderAbsensi
+    history:List[HistoryAbsensi]
+
+class DataMenuAbsensiResponse(BaseModel):
+    meta: MetaResponse
+    data: DataMenuAbsensi
+    status: str
+    code: int
+    message: str

@@ -164,3 +164,79 @@ async def shift_route(
         )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+
+@router.get("/list-leave",
+    responses={
+        "200": {"model": DataLeaveResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_leave_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    src: str = None,
+):
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await mobileRepo.get_list_leave(db, user, src)
+        return common_response(Ok(
+            message="Success list leave",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/data-checkout",
+    responses={
+        "200": {"model": DataMenuCheckoutResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_leave_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await mobileRepo.get_menu_checkout(db, user)
+        return common_response(Ok(
+            message="Success Data Menu Checkout",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/data-absensi",
+    responses={
+        "200": {"model": DataMenuAbsensiResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_leave_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await mobileRepo.get_menu_absensi(db, user)
+        return common_response(Ok(
+            message="Success Data Menu Absensi",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))

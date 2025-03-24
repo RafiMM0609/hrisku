@@ -14,6 +14,7 @@ from models.ShiftSchedule import ShiftSchedule
 from models.UserRole import UserRole
 from models.Attendance import Attendance
 from models.LeaveTable import LeaveTable
+from models.TimeSheet import TimeSheet
 from datetime import datetime, timedelta, date
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
@@ -94,11 +95,11 @@ async def get_talent_performance(
         raise ValueError("Failed get talent performance")
 
 async def get_talent_timesheet(
-    db:Session,
-    user_id:str,
-    start_date:date=None,
-    end_date:date=None
-)->TalentTimesheet:
+    db: Session,
+    user_id: str,
+    start_date: date = None,
+    end_date: date = None
+) -> TalentTimesheet:
     try:
         # Set default date range if not provided
         if not start_date:
@@ -111,22 +112,28 @@ async def get_talent_timesheet(
         user = user_query.scalar_one_or_none()
         if not user:
             raise ValueError("User not found")
-        
-        # Filter timesheet records by date range
-        filtered_timesheet = [
-            ts for ts in user.timesheet_user 
-            if (ts.date and start_date <= ts.date <= end_date)
-        ]
-        
+
+        # Fetch timesheet records with database-level filtering
+        timesheet_query = db.execute(
+            select(TimeSheet)
+            .where(
+                TimeSheet.emp_id == user.id,
+                TimeSheet.isact == True,
+                TimeSheet.clock_out >= start_date,
+                TimeSheet.clock_out <= end_date
+            )
+            .limit(100)
+        )
+        filtered_timesheet = timesheet_query.scalars().all()
+
         timesheet = []
         for history in filtered_timesheet:
             timesheet.append(TimeSheetHistory(
-                # Use the date field for formatting, not clock_out
                 date=history.date.strftime("%A, %d %B %Y") if history.date else None,
                 working_hours=history.total_hours,
                 notes=history.note
             ))
-            
+
         return TalentTimesheet(
             name=user.name,
             role_name=user.roles[0].name if user.roles else None,
@@ -134,11 +141,11 @@ async def get_talent_timesheet(
             timesheet=timesheet
         ).dict()
     except Exception as e:
-        print("Error get talent timesheet: \n",e)
+        print("Error get talent timesheet: \n", e)
         raise ValueError("Failed get talent timesheet")
 
 async def get_talent_attendance(
-    db: Session , 
+    db: Session, 
     user_id: str, 
     start_date: date = None, 
     end_date: date = None
@@ -156,13 +163,16 @@ async def get_talent_attendance(
         if not user:
             raise ValueError("User not found")
 
-        # Fetch attendance data within the date range
+        # Fetch attendance data with pagination
         attendance_query = db.execute(
-            select(Attendance).where(
-                Attendance.emp_id == user_id,
+            select(Attendance)
+            .where(
+                Attendance.emp_id == user.id,
                 Attendance.date >= start_date,
-                Attendance.date <= end_date
+                Attendance.date <= end_date,
+                Attendance.isact == True
             )
+            .limit(100)  # Limit to 100 records per query
         )
         attendance_records = attendance_query.scalars().all()
         attendance_data = [
@@ -177,13 +187,16 @@ async def get_talent_attendance(
             for record in attendance_records
         ]
 
-        # Fetch leave submissions within the date range
+        # Fetch leave submissions with pagination
         leave_query = db.execute(
-            select(LeaveTable).where(
+            select(LeaveTable)
+            .where(
                 LeaveTable.emp_id == user.id,
                 LeaveTable.start_date >= start_date,
-                LeaveTable.end_date <= end_date
+                LeaveTable.end_date <= end_date,
+                LeaveTable.isact == True
             )
+            .limit(100)  # Limit to 100 records per query
         )
         leave_records = leave_query.scalars().all()
         leave_submissions = [
@@ -196,7 +209,10 @@ async def get_talent_attendance(
                 note=record.note,
                 evidence=record.evidence,
                 file_name=None,  # Add file name if available
-                status=record.status,
+                status=Organization(
+                    id=record.status_leave.id if record.status_leave and record.status_leave else 0,
+                    name=record.status_leave.name if record.status_leave and record.status_leave else None
+                ),
             )
             for record in leave_records
         ]
@@ -206,11 +222,14 @@ async def get_talent_attendance(
             select(
                 Attendance.status,
                 func.count(Attendance.id).label("count")
-            ).where(
+            )
+            .where(
                 Attendance.emp_id == user.id,
                 Attendance.date >= start_date,
-                Attendance.date <= end_date
-            ).group_by(Attendance.status)
+                Attendance.date <= end_date,
+                Attendance.isact == True
+            )
+            .group_by(Attendance.status)
         )
         graph_results = graph_query.all()
         graph_data = [
@@ -221,12 +240,16 @@ async def get_talent_attendance(
         # Construct TalentAttendance response
         return TalentAttendance(
             name=user.name,
-            role_name="Role Name Placeholder",  # Replace with actual role name
+            role=Organization(
+                id=user.roles[0].id if user.roles and user.roles[0] else 0,
+                name=user.roles[0].name if user.roles and user.roles[0] else None
+            ),
             attendance=attendance_data,
             leave_submission=leave_submissions,
             graph=graph_data,
         ).dict()
     except Exception as e:
+        # Log error to centralized logging system
         print(f"Error getting talent attendance: {e}")
         raise ValueError("Failed to get talent attendance data")
 
@@ -278,8 +301,8 @@ async def data_talent_mapping(
             work_arrangements.append(work_arr)
         
         # If no shifts found, add a default one to match model requirements
-        if not work_arrangements:
-            work_arrangements.append(DataWorkingArrangement())
+        # if not work_arrangements:
+        #     work_arrangements.append(DataWorkingArrangement())
         
         # Create output using the proper pydantic models
         client_org = ClientData(
@@ -298,8 +321,8 @@ async def data_talent_mapping(
         return TalentMapping(
             client=client_org,
             outlet=outlet_data,
-            workdays=len(work_arrangements) if work_arrangements else 5,
-            workarr=work_arrangements
+            workdays=len(work_arrangements) if work_arrangements else 0,
+            workarr=work_arrangements if work_arrangements != [] else None
         ).dict()
         
     except Exception as e:

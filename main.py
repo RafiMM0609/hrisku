@@ -21,6 +21,7 @@ from routes.clientbilling import router as ClientBillingRouter
 from routes.file import router as FileRouter
 from routes.talent_mapping import router as TalentMappingRouter
 from routes.talent_monitor import router as TalentMonitorRouter
+from routes.mobile import router as MobileRouter
 from routes.outlet import router as OutletRouter
 
 if SENTRY_DSN != None:  # NOQA
@@ -84,6 +85,7 @@ app.include_router(TalentMappingRouter, prefix="/talent-mapping")
 app.include_router(TalentMonitorRouter, prefix="/talent-monitor")
 app.include_router(FileRouter, prefix="/file")
 app.include_router(OutletRouter, prefix="/outlet")
+app.include_router(MobileRouter, prefix="/mobile")
 
 @app.get("/")
 async def read_root():  # <-- Perbaikan di sini

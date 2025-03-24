@@ -71,8 +71,8 @@ class DataWorkingArrangement(BaseModel):
 class TalentMapping(BaseModel):
     client:Optional[ClientData]=None
     outlet:Optional[DataOutlet]=None
-    workdays:int=5
-    workarr:List[DataWorkingArrangement]
+    workdays:int=0
+    workarr:Optional[List[DataWorkingArrangement]]=None
 class TalentMappingResponse(BaseModel):
     meta: MetaResponse
     data: TalentMapping
@@ -147,11 +147,11 @@ class LeaveSubmission(BaseModel):
     note: Optional[str] = None
     evidence: Optional[str] = None
     file_name: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[Organization] = None
 
 class TalentAttendance(BaseModel):
     name: str
-    role_name: str
+    role: Organization
     attendance: List[AttendanceData]
     leave_submission: List[LeaveSubmission]
     graph: List[AttendanceGraphData]

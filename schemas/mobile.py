@@ -29,18 +29,29 @@ class CheckinRequest(BaseModel):
     latitude:float
     longitude:float
     outlet_id:int
-    shift_id:int
 
 class CheckoutRequest(BaseModel):
-    attendance_id:int
     latitude:float
     longitude:float
     outlet_id:int
-    shift_id:int
 
 class LeaveRequest(BaseModel):
+    leave_id: int
     start_date:str
     end_date:str
     note:Optional[str]=None
     evidence:Optional[str]=None
-    type:str
+
+class DataOutlet(BaseModel):
+    id:int
+    name:str
+    address:str
+    latitude:float
+    longitude:float
+
+class DataOutletResponse(BaseModel):
+    meta: MetaResponse
+    data: DataOutlet
+    status: str
+    code: int
+    message: str

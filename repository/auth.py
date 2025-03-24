@@ -362,6 +362,7 @@ async def check_user_password(db: Session, email: str, password: str) -> Optiona
             return user, False
     else:
         if validated_user_password(user.password, password):
+            print("password valid")
             return user, True
     return False, False
 

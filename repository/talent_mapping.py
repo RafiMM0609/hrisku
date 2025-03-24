@@ -256,6 +256,7 @@ async def add_talent(
         role = db.execute(
             select(Role)
             .filter(Role.id==role_id)).scalar()
+        password = secrets.token_urlsafe(16)
         new_user = User(
             photo=payload.photo,
             name=payload.name,
@@ -265,7 +266,9 @@ async def add_talent(
             email=payload.email,
             phone=payload.phone,
             address=payload.address,
-            client_id=payload.client_id
+            client_id=payload.client_id,
+            first_login=password,
+            created_by=user.id,
         )
         new_user.roles.append(role)
         db.add(new_user)
@@ -276,25 +279,18 @@ async def add_talent(
         )
         db.commit()
         if isinstance(payload.shift, (list, tuple)):
-            # await mapping_schedule(
-            #     db, 
-            #     new_user.client_id,
-            #     new_user.id, 
-            #     payload.shift, 
-            #     payload.workdays
-            # )
-
-            background_tasks.add_task(
-                add_contract,
-                new_user.id,
-                payload.contract
-            )
             background_tasks.add_task(
                 add_mapping_schedule,
                 new_user.client_id,
                 new_user.id, 
                 payload.shift, 
                 payload.workdays
+            )
+        if isinstance(payload.contract, (list, tuple)):
+            background_tasks.add_task(
+                add_contract,
+                new_user.id,
+                payload.contract
             )
     except Exception as e:
         # Set all existing users with the same ID to inactive

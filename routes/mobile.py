@@ -6,76 +6,161 @@ from core.file import preview_file_from_minio, upload_file_to_minio, download_fi
 from core.responses import (
     Created,
     Unauthorized,
-    common_response,
+    CudResponse,
     InternalServerError,
     BadRequest,
+    common_response,
+    Ok,
 )
 from datetime import datetime
 from core.security import get_user_from_jwt_token, oauth2_scheme
-from schemas.common import NoContentResponse, InternalServerErrorResponse, UnauthorizedResponse
+from schemas.common import NoContentResponse, InternalServerErrorResponse, UnauthorizedResponse, BadRequestResponse, CudResponschema
 from repository import mobile as mobileRepo
+from repository import shift as shiftRepo
 from schemas.mobile import *
+from schemas.shift import *
 from settings import MINIO_BUCKET
 import os
 
 router = APIRouter(tags=["Mobile"])
 
-@router.post("/checkin", response_model=NoContentResponse)
+@router.post("/checkin",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
 async def checkin(
     data: CheckinRequest,
     db: Session = Depends(get_db),
-    user=Depends(get_user_from_jwt_token),
+    token: str = Depends(oauth2_scheme),
 ):
     """
     Endpoint for employee check-in.
     """
+    user = get_user_from_jwt_token(db, token)
     if not user:
         return Unauthorized()
     try:
-        await mobileRepo.add_chekin(db, data, user)
-        return NoContentResponse()
-    except ValueError as e:
-        return BadRequest(detail=str(e))
+        await mobileRepo.add_checkin(db, data, user)
+        return common_response(CudResponse(
+            message="Success check-in"
+            )
+        )
     except Exception as e:
-        return InternalServerError(detail=str(e))
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/check-location",
+    responses={
+        "201": {"model": DataOutletResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def check_location_routes(
+    latitude:float,
+    longitude:float,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    """
+    Endpoint for employee check-in.
+    """
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data = await mobileRepo.check_nearest_outlet(
+            data_latitude=latitude, 
+            data_longitude=longitude, 
+            db=db, 
+            user=user
+        )
+        return common_response(Ok(
+            message="Success get nearest outlet",
+            data=data
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
 
 
-@router.post("/checkout", response_model=NoContentResponse)
+@router.post("/checkout",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
 async def checkout(
     data: CheckoutRequest,
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
-    user=Depends(get_user_from_jwt_token),
 ):
     """
     Endpoint for employee check-out.
     """
+    user = get_user_from_jwt_token(db, token)
     if not user:
         return Unauthorized()
     try:
         await mobileRepo.add_checkout(db, data, user)
-        return NoContentResponse()
-    except ValueError as e:
-        return BadRequest(detail=str(e))
+        return common_response(CudResponse(message="Success check-out"))
     except Exception as e:
-        return InternalServerError(detail=str(e))
+        return common_response(BadRequest(message=str(e)))
 
 
-@router.post("/izin", response_model=NoContentResponse)
-async def izin(
+@router.post("/izin",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def izin_route(
     data: LeaveRequest,
     db: Session = Depends(get_db),
-    user=Depends(get_user_from_jwt_token),
+    token: str = Depends(oauth2_scheme),
 ):
     """
     Endpoint for employee leave request.
     """
+    user = get_user_from_jwt_token(db, token)
     if not user:
         return Unauthorized()
     try:
         await mobileRepo.add_izin(db, data, user)
-        return NoContentResponse()
-    except ValueError as e:
-        return BadRequest(detail=str(e))
+        return common_response(CudResponse(message="Success add izin"))
     except Exception as e:
-        return InternalServerError(detail=str(e))
+        return common_response(BadRequest(message=str(e)))
+    
 
+@router.get("/today-shift",
+    responses={
+        "200": {"model": DataShiftResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def shift_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await shiftRepo.get_today_shift(db, user)
+        return common_response(Ok(
+            message="Success get today shift",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))

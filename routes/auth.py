@@ -237,6 +237,7 @@ async def generate_token(
             db, form_data.username, form_data.password
         )
         if not is_valid:
+            print("Invalid Credentials")
             return common_response(BadRequest(message="Invalid Credentials"))
         user = is_valid
         token = await generate_jwt_token_from_user(user=user)

@@ -11,6 +11,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from models import Base
+from models.StatusIzin import StatusIzin
 
 
 class LeaveTable(Base):
@@ -20,7 +21,7 @@ class LeaveTable(Base):
     emp_id = Column(String(36), ForeignKey("user.id"), nullable=False, index=True)
     atendance_id = Column(Integer, ForeignKey("attendance.id"), nullable=True)
     type = Column(String, nullable=True)
-    status = Column(String, nullable=True)
+    status = Column(Integer, ForeignKey("master_status_izin.id"),nullable=True)
     note = Column(String, nullable=True)
     evidence = Column(String, nullable=True)    
     approval_date = Column(Date, nullable=True)
@@ -35,3 +36,4 @@ class LeaveTable(Base):
     # Many to Many
     users = relationship("User", back_populates="leave_user", foreign_keys=[emp_id])
     attendances = relationship("Attendance", back_populates="attendance_leave", foreign_keys=[atendance_id])
+    status_leave = relationship("StatusIzin", back_populates="leave_status", foreign_keys=[status])

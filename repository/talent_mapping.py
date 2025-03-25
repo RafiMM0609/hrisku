@@ -350,7 +350,8 @@ async def add_talent(
                 new_user.client_id,
                 new_user.id, 
                 payload.shift, 
-                payload.workdays
+                payload.workdays,
+                new_user.outlet_id
             )
         if isinstance(payload.contract, (list, tuple)):
             background_tasks.add_task(
@@ -417,7 +418,7 @@ async def add_contract(emp_id: str, payload: ContractManagement):
     finally:
         db.close()  # Jangan lupa close agar tidak bocor
 
-async def add_mapping_schedule(client_id, emp_id, shift, workdays):
+async def add_mapping_schedule(client_id, emp_id, shift, workdays, outlet_id):
     db = SessionLocal()  # Ambil koneksi dari pool
     try:
         for item in shift:
@@ -429,6 +430,7 @@ async def add_mapping_schedule(client_id, emp_id, shift, workdays):
                 time_end=datetime.strptime(item.end_time, "%H:%M").time(),
                 day=item.day,
                 created_at=datetime.now(tz=timezone(TZ)),
+                outlet_id=outlet_id,
             )
             db.add(new_shift)
             db.commit()
@@ -543,7 +545,8 @@ async def edit_talent(
                 user_exist.id,
                 payload.shift,
                 payload.workdays,
-                user.id
+                user.id,
+                user_exist.outlet_id,
             )
         background_tasks.add_task(
             edit_contract,
@@ -606,7 +609,7 @@ async def edit_contract(user_id:str, emp_id: str, payload: EditContractManagemen
     finally:
         db.close()  # Ensure the connection is closed
 
-async def edit_schedule(client_id, emp_id, shift:List[ShiftEdit], workdays, user_id):
+async def edit_schedule(client_id, emp_id, shift:List[ShiftEdit], workdays, user_id, outlet_id):
     db = SessionLocal()  # Ambil koneksi dari pool
     db.execute(
         update(ShiftSchedule)
@@ -625,6 +628,7 @@ async def edit_schedule(client_id, emp_id, shift:List[ShiftEdit], workdays, user
                     time_end=datetime.strptime(d.end_time, "%H:%M").time(),
                     day=d.day,
                     created_at=datetime.now(tz=timezone(TZ)),
+                    outlet_id=outlet_id,
                 )
                 db.add(new_shift)
                 db.commit()

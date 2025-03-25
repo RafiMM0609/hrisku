@@ -78,15 +78,17 @@ async def login(
             "client_secret": "string",
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, data=data)
+        if status:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, data=data)
 
-        # Check if the external request was successful
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail=response.text)
+            # Check if the external request was successful
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            data_face =  response.json()
 
         # Return the response from the external service
-        data_face =  response.json()
+        face_id_token = data_face["access_token"] if status else None
         return common_response(
             CudResponse(
                 data={
@@ -99,7 +101,7 @@ async def login(
                         "id": user.roles[0].id
                     },
                     "token": token,
-                    "token_face_id": data_face["access_token"],
+                    "token_face_id": face_id_token,
                     "change_password": not status
                 },
                 message="Login Success"

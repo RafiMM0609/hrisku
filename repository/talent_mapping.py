@@ -5,6 +5,7 @@ from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
+from core.mail import send_first_password_email
 from models.User import User
 from models.Role import Role
 from models.UserRole import UserRole
@@ -357,10 +358,17 @@ async def add_talent(
                 new_user.id,
                 payload.contract
             )
+        await send_first_password_email(
+            email_to=new_user.email,
+            body={
+                "email": new_user.email,
+                "password": password
+                }
+        )
     except Exception as e:
         # Set all existing users with the same ID to inactive
         db.execute(
-            update(User).where(User.id == new_user.id, User.id != new_user.id).values(isact=False)
+        update(User).where(User.id == new_user.id).values(isact=False)
         )
         db.commit()
         print("Error regis talent : \n", e)

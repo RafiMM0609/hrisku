@@ -180,34 +180,35 @@ async def login(
             "client_id": "string",
             "client_secret": "string",
         }
+        if status:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, data=data)
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, data=data)
-
-        # Check if the external request was successful
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail=response.text)
+            # Check if the external request was successful
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            data_face =  response.json()
 
         # Return the response from the external service
-        data_face =  response.json()
+        face_id_token = data_face["access_token"] if status else None
         return common_response(
-            CudResponse(
-                data={
-                    "id": str(user.id),
-                    "email": user.email,
-                    "name": user.name,
-                    "isact": user.isact,
-                    "role": None if not user.roles else{
-                        "nama": user.roles[0].name,
-                        "id": user.roles[0].id
+                CudResponse(
+                    data={
+                        "id": str(user.id),
+                        "email": user.email,
+                        "name": user.name,
+                        "isact": user.isact,
+                        "role": None if not user.roles else{
+                            "nama": user.roles[0].name,
+                            "id": user.roles[0].id
+                        },
+                        "token": token,
+                        "token_face_id": face_id_token,
+                        "change_password": not status
                     },
-                    "token": token,
-                    "token_face_id": data_face["access_token"],
-                    "change_password": not status
-                },
-                message="Login Success"
+                    message="Login Success"
+                )
             )
-        )
     except Exception as e:
         import traceback
         traceback.print_exc()

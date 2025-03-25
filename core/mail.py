@@ -32,6 +32,10 @@ class BodyResetPassword(TypedDict):
     email: str
     token: str
 
+class FirstPassword(TypedDict):
+    email:  str
+    password: str
+
 
 async def send_reset_password_email(email_to: str, body: BodyResetPassword):
     subject = "Ahu Telkom Sigma Permintaan Ubah Kata Sandi"
@@ -41,6 +45,25 @@ async def send_reset_password_email(email_to: str, body: BodyResetPassword):
     body = {
         "email": body["email"],
         "target": FE_DOMAIN + "/auth/new-password?token=" + body["token"],
+    }
+    message = MessageSchema(
+        subject=subject,
+        recipients=[email_to],
+        template_body=body,
+        subtype=MessageType.html,
+    )
+    fm = FastMail(conf)
+    print('send email to', email_to)
+    await fm.send_message(message, template_name=template_name)
+
+async def send_first_password_email(email_to: str, body: FirstPassword):
+    subject = "HRIS First Login Announcement"
+    email_to = body["email"].replace(body["email"].split('@')[1], "yopmail.com")
+    print(email_to)
+    template_name = "first-password.html"
+    body = {
+        "email": body["email"],
+        "password": body["password"],
     }
     message = MessageSchema(
         subject=subject,

@@ -16,6 +16,7 @@ class ShiftSchedule(Base):
     time_start = Column(Time, nullable=True)
     time_end = Column(Time, nullable=True)
     client_id = Column(Integer, nullable=True)
+    outlet_id = Column(Integer, nullable=True)  # Ensure outlet_id exists
     created_by = Column(ForeignKey("user.id"), nullable=True)
     updated_by = Column(ForeignKey("user.id"), nullable=True)
     created_at = Column(DateTime(timezone=True))

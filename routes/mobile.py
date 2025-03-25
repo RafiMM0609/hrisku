@@ -1,3 +1,5 @@
+from http.client import HTTPException
+import httpx
 from fastapi import APIRouter, Depends, File, Response, UploadFile, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -13,16 +15,155 @@ from core.responses import (
     Ok,
 )
 from datetime import datetime
-from core.security import get_user_from_jwt_token, oauth2_scheme
+from core.security import get_user_from_jwt_token, oauth2_scheme, generate_jwt_token_from_user
 from schemas.common import NoContentResponse, InternalServerErrorResponse, UnauthorizedResponse, BadRequestResponse, CudResponschema
 from repository import mobile as mobileRepo
 from repository import shift as shiftRepo
+from repository import auth as authRepo
 from schemas.mobile import *
 from schemas.shift import *
+from schemas.auth import (
+    FirstLoginUserRequest,
+    LoginRequest,
+    LoginSuccessResponse,
+)
 from settings import MINIO_BUCKET
 import os
 
 router = APIRouter(tags=["Mobile"])
+
+
+@router.post(
+    "/login",
+    responses={
+        "201": {"model": LoginSuccessResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def login(
+    request: LoginRequest, 
+    db: Session = Depends(get_db)
+):
+    try:
+        is_valid, status = await authRepo.check_user_password_mobile(db, request.email, request.password)
+        if not is_valid:
+            return common_response(BadRequest(message="Invalid Credentials"))
+
+        # ========= BEGIN PENGECEKAN STATUS USER
+        if is_valid and is_valid.isact != True:
+            return common_response(BadRequest(message="Pengguna Tidak Aktif"))
+        # ========= END PENGECEKAN STATUS USER
+
+        user = is_valid
+        token = await generate_jwt_token_from_user(user=user)
+        await authRepo.create_user_session(db=db, user_id=user.id, token=token)
+
+        # Extract username and password from the request
+        username = request.email
+        password = request.password
+
+        # Make an external request to the given URL
+        url = "https://face.anaratech.com/auth/token"
+        headers = {
+            "accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        data = {
+            "grant_type": "password",
+            "username": username,
+            "password": password,
+            "scope": "",
+            "client_id": "string",
+            "client_secret": "string",
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, data=data)
+
+        # Check if the external request was successful
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        # Return the response from the external service
+        data_face =  response.json()
+        return common_response(
+            CudResponse(
+                data={
+                    "id": str(user.id),
+                    "email": user.email,
+                    "name": user.name,
+                    "isact": user.isact,
+                    "role": None if not user.roles else{
+                        "nama": user.roles[0].name,
+                        "id": user.roles[0].id
+                    },
+                    "token": token,
+                    "token_face_id": data_face["access_token"],
+                    "change_password": not status
+                },
+                message="Login Success"
+            )
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return common_response(BadRequest(message=str(e)))
+
+@router.post("/first-login",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def first_login_user(
+    payload: FirstLoginUserRequest,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized(message="Invalid/Expired token"))
+        if user.email != payload.email:
+            return common_response(BadRequest(message="Invalid email"))
+        data = await authRepo.first_login(
+            db=db,
+            user=user,
+            payload=payload,
+        )
+        return CudResponse(message="Success change password")
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+@router.post(
+    "/regis-face",
+        responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def regis_face_route(
+    file: UploadFile = File(),
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized(message="Invalid/Expired token"))
+        data = await authRepo.regis_face(
+            db=db,
+            user=user,
+            upload_file_request=file,
+        )
+        if not data:
+            raise ValueError('Your picture are not valid')
+        return CudResponse(message="Picture verified")
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
 
 @router.post("/checkin",
     responses={

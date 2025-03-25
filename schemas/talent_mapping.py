@@ -181,3 +181,22 @@ class HistoryContractResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class DataCalenderWorkarr(BaseModel):
+    id: int
+    emp_id: str  # Added emp_id to match the function output
+    emp_name: str
+    client_id: int
+    outlet_id: int
+    day: str
+    time_start: str
+    time_end: str
+    workdays: Optional[int] = None
+    created_at: str
+
+class DataCalenderWorkarrResponse(BaseModel):
+    meta: MetaResponse
+    data: DataCalenderWorkarr
+    status: str
+    code: int
+    message: str

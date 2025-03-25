@@ -41,6 +41,7 @@ from schemas.talent_mapping import (
     ViewTalent,
     ViewTalentResponse,
     HistoryContractResponse,
+    DataCalenderWorkarrResponse,
 )
 # from core.file import generate_link_download
 from repository import talent_mapping as TalentRepo
@@ -112,6 +113,40 @@ async def list_user_route(
                 "page_size": page_size,
                 "page": page,
             },
+            message="Success get data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/shift-calender",
+    responses={
+        "200": {"model": DataCalenderWorkarrResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def get_menu_calender_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    client_id: Optional[str]=None,
+    outlet_id: Optional[str]=None,
+    start_date: Optional[str]=None,
+    end_date: Optional[str]=None,
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data_shift_calender = await TalentRepo.get_menu_calender(
+            db=db,
+            client_id=client_id,
+            outlet_id=outlet_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return common_response(Ok(
+            data=data_shift_calender,
             message="Success get data"
             )
         )

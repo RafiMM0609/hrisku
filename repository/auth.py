@@ -128,33 +128,15 @@ async def regis_face(
     db: Session,
 ):
     try:
-        # from deepface import DeepFace
-        # # Membaca gambar langsung dari request tanpa menyimpannya
-        # image_bytes = await upload_file_request.read()
-        
-        # # Mengubah gambar menjadi format NumPy agar bisa digunakan oleh DeepFace
-        # image = Image.open(io.BytesIO(image_bytes))  # Menggunakan PIL untuk membuka gambar
-        # image_np = np.array(image)  # Konversi ke array NumPy
-        
-        # # Jika gambar memiliki alpha channel (RGBA), konversi ke RGB
-        # if image_np.shape[-1] == 4:
-        #     image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
-
-        # # Face detection dengan DeepFace
-        # loop = asyncio.get_running_loop()
-        # objs = await loop.run_in_executor(None, DeepFace.analyze, image_np, ['age'])
-
-        # print(objs)
-
-        # # Setelah validasi, unggah gambar ke MinIO atau local storage
-        # now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        # file_extension = os.path.splitext(upload_file_request.filename)[1]
-        # path = await upload_file(upload_file_request, f"/face/face-{now.replace(' ', '_')}{file_extension}")
-
-        # # return {"face_data": objs, "face_path": path}
-        # user.face_id = path
-        # db.add(user)
-        # db.commit()
+        file_extension = os.path.splitext(upload_file_request.filename)[1]
+        file_name = os.path.splitext(upload_file_request.filename)[0]
+        now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        path = await upload_file(
+        upload_file=upload_file_request, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
+        )
+        user.face_id = path
+        db.add(user)
+        db.commit()
         return "Oke"
     except Exception as e:
         print(f"Error regis face: {e}")
@@ -356,6 +338,21 @@ async def create_user_session_me(db: Session, user_id: str, token:str, old_token
 async def check_user_password(db: Session, email: str, password: str) -> Optional[User]:
     user, status = await get_user_by_email(db, email=email)
     if user == None:
+        return False, False
+    if status:
+        if user.first_login == password:
+            return user, False
+    else:
+        if validated_user_password(user.password, password):
+            print("password valid")
+            return user, True
+    return False, False
+
+async def check_user_password_mobile(db: Session, email: str, password: str) -> Optional[User]:
+    user, status = await get_user_by_email(db, email=email)
+    if user == None:
+        return False, False
+    if user.roles[0].id != 1:
         return False, False
     if status:
         if user.first_login == password:

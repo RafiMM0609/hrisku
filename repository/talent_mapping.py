@@ -32,9 +32,74 @@ from schemas.talent_mapping import (
     ViewPersonalInformation,
     ViewMappingInformation,
     EditContractManagement,
+    DataCalenderWorkarr,
 )
 import os
 import asyncio
+from fastapi.logger import logger  # Add logger for better debugging
+
+async def get_menu_calender(
+    db: Session,
+    client_id: Optional[str],
+    outlet_id: Optional[str],
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+) -> List[DataCalenderWorkarr]:
+    try:
+        if not client_id or not outlet_id:
+            raise ValueError("Client ID and Outlet ID must be provided")
+
+        this_year = datetime.now().year
+        start_date = start_date or datetime.now().strftime("%Y-%m-%d")
+        end_date = end_date or (datetime.now() + timedelta(days=6)).strftime("%Y-%m-%d")
+        
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+
+        query = (
+            select(ShiftSchedule)
+            .filter(
+                ShiftSchedule.client_id == client_id,
+                ShiftSchedule.outlet_id == outlet_id,
+                ShiftSchedule.isact == True,
+                func.extract('year', ShiftSchedule.created_at) == this_year
+            )
+        )
+        data_shift = db.execute(query).scalars().all()
+
+        if not data_shift:
+            logger.warning(f"No shift schedules found for client_id={client_id}, outlet_id={outlet_id}")
+            return []
+
+        # Map the query results to the DataCalenderWorkarr Pydantic model
+        result = []
+        for shift in data_shift:
+            current_date = start_date_obj
+            while current_date <= end_date_obj:
+                if current_date.strftime("%A") == shift.day:  # Match day name
+                    start_datetime = datetime.combine(current_date, shift.time_start)
+                    end_datetime = datetime.combine(current_date, shift.time_end)
+                    result.append(
+                        DataCalenderWorkarr(
+                            id=shift.id,
+                            emp_id=shift.emp_id,
+                            emp_name=shift.users.name,
+                            client_id=shift.client_id,
+                            outlet_id=shift.outlet_id,
+                            day=shift.day,
+                            time_start=start_datetime.strftime("%Y-%m-%d %H:%M"),
+                            time_end=end_datetime.strftime("%Y-%m-%d %H:%M"),
+                            workdays=shift.workdays,
+                            created_at=shift.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                        ).dict()
+                    )
+                current_date += timedelta(days=1)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in get_menu_calender: {e}")
+        raise ValueError("Failed to get menu calendar")
 
 async def map_shift_to_calendar(emp_id: str, start_time: str, end_time: str, day: str, db: Session):
     try:

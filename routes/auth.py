@@ -75,6 +75,35 @@ async def first_login_user(
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
 @router.post(
+    "/regis-face",
+        responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def regis_face_route(
+    file: UploadFile = File(),
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized(message="Invalid/Expired token"))
+        data = await authRepo.regis_face(
+            db=db,
+            user=user,
+            upload_file_request=file,
+        )
+        if not data:
+            raise ValueError('Your picture are not valid')
+        return CudResponse(message="Picture verified")
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))    
+
+@router.post(
     "/face",
         responses={
         "201": {"model": MeSuccessResponse},
@@ -105,34 +134,6 @@ async def face_route(
         print("ERROR :",e)
         traceback.print_exc()
         return common_response(BadRequest(message=str(e)))
-@router.post(
-    "/regis-face",
-        responses={
-        "201": {"model": CudResponschema},
-        "400": {"model": BadRequestResponse},
-        "401": {"model": UnauthorizedResponse},
-        "500": {"model": InternalServerErrorResponse},
-    },
-)
-async def regis_face_route(
-    file: UploadFile = File(),
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
-):
-    try:
-        user = get_user_from_jwt_token(db, token)
-        if not user:
-            return common_response(Unauthorized(message="Invalid/Expired token"))
-        data = await authRepo.regis_face(
-            db=db,
-            user=user,
-            upload_file_request=file,
-        )
-        if not data:
-            raise ValueError('Your picture are not valid')
-        return CudResponse(message="Picture verified")
-    except Exception as e:
-        return common_response(BadRequest(message=str(e)))
 
 @router.post(
     "/login",
@@ -145,7 +146,7 @@ async def regis_face_route(
 async def login(
     request: LoginRequest, 
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     try:
         is_valid, status = await authRepo.check_user_password(db, request.email, request.password)

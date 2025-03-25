@@ -251,7 +251,22 @@ async def me(
                         "id": user.roles[0].id if user.roles else None,
                         "name": user.roles[0].name if user.roles else None,
                     },
-                    "address":user.address
+                    "address":user.address,
+                    "photo": generate_link_download(user.photo),
+                    "face_id": generate_link_download(user.face_id),
+                    "client":{
+                        "id": user.client_user.id if user.client_user else None,
+                        "name": user.client_user.name if user.client_user else None,
+                    },
+                    "contact":{
+                        "id": user.contract_user.id if user.contract_user else None,
+                        "start": user.contract_user.start.strftime("%d %B %Y") if user.contract_user else None,
+                        "end": user.contract_user.end.strftime("%d %B %Y") if user.contract_user else None,
+                    },
+                    "outlet":{
+                        "id": user.outlet_id,
+                        "name": user.user_outlet.name,
+                    }
                 }
             )
         )

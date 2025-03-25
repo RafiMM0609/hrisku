@@ -32,7 +32,7 @@ async def get_today_shift(
             id=shift.id,
             day=shift.day,
             start=shift.time_start.strftime("%H:%M"),
-            end=shift.time_end.strftime("%H : %M")
+            end=shift.time_end.strftime("%H:%M")
         ).dict()
     except Exception as e:
         print("Error get_today_shift", e)

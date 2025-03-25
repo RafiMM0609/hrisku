@@ -50,17 +50,16 @@ class MeSuccessResponse(BaseModel):
     email: str
     username: str
     name: str
-    is_active: bool
+    isact: bool
     phone: str
     refreshed_token: str
     image: str
     role: Organization
-    unit_kerja: List[Organization]
-    cabang: List[Organization]
-    wilayah: Optional[Organization]
-    zona: Optional[Organization]
-    jenis_kelamin: str
-    code_user: str
+    address: str
+    photo: str
+    face_id: str
+    client:Organization
+    outlet:Organization
 
 
 class ChangeUserProfileRequest(BaseModel):

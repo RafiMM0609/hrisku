@@ -675,6 +675,9 @@ def to_pydantic(result: Client) -> DataDetailClientSignature:
         total_active=len(outlets),  # Total active outlets
         manager_signature=result.contract_clients[0].manager_signature if result.contract_clients else None,
         technical_signature=result.contract_clients[0].technical_signature if result.contract_clients else None,
+        cs_person=result.cs_person,
+        cs_number=result.cs_number,
+        cs_email=result.cs_email,
     ).dict()
 
 # Panggil fungsi

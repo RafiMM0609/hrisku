@@ -176,6 +176,9 @@ class DataDetailClientSignature(BaseModel):
     total_active:int
     manager_signature:Optional[str] = None
     technical_signature:Optional[str] = None
+    cs_person: Optional[str] = None
+    cs_number: Optional[str] = None
+    cs_email: Optional[str] = None
 
 class DataDetailClientSignatureResponse(BaseModel):
     meta: MetaResponse

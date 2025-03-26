@@ -21,6 +21,7 @@ from schemas.common import NoContentResponse, InternalServerErrorResponse, Unaut
 from repository import mobile as mobileRepo
 from repository import shift as shiftRepo
 from repository import auth as authRepo
+from repository import izin as izinRepo
 from schemas.mobile import *
 from schemas.shift import *
 from schemas.auth import (
@@ -32,6 +33,7 @@ from schemas.auth import (
     ForgotPasswordChangePasswordRequest,
     ForgotPasswordChangePasswordResponse,
 )
+from schemas.izin import DataIzinResponse
 from settings import MINIO_BUCKET
 import os
 
@@ -461,12 +463,40 @@ async def list_leave_route(
 async def list_leave_route(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
+    start:Optional[str] = None,
+    end:Optional[str] = None,
 ):
     user = get_user_from_jwt_token(db, token)
     if not user:
         return Unauthorized()
     try:
-        data_shift = await mobileRepo.get_menu_absensi(db, user)
+        data_shift = await mobileRepo.get_menu_absensi(db, user, start, end)
+        return common_response(Ok(
+            message="Success Data Menu Absensi",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/master/izin",
+    responses={
+        "200": {"model": DataIzinResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_izin_option_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    src:Optional[str] = None,
+):
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await izinRepo.get_izin_option(db, user, src)
         return common_response(Ok(
             message="Success Data Menu Absensi",
             data=data_shift,

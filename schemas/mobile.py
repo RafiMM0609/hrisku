@@ -87,27 +87,27 @@ class DataMenuCheckoutResponse(BaseModel):
     message: str
 
 class HeaderAbsensi(BaseModel):
-    total:int
-    hadir:int
-    absen:int
-    sakit:int
-    cuti:int
-    izin:int
-    terlambat:int
-    early_leave:int
-    lembur:int
+    total:Optional[int]=0
+    hadir:Optional[int]=0
+    absen:Optional[int]=0
+    sakit:Optional[int]=0
+    cuti:Optional[int]=0
+    izin:Optional[int]=0
+    terlambat:Optional[int]=0
+    early_leave:Optional[int]=0
+    lembur:Optional[int]=0
 
 class HistoryAbsensi(BaseModel):
     date:str = "22 August 2025"
     clock_in:str
-    clock_out:str
-    duration:str = "8 jam 30 menit"
+    clock_out:Optional[str]=None
+    duration:Optional[str] =None
     outlet:DataOutlet
 
 class DataMenuAbsensi(BaseModel):
     this_month:str = "August 2025"
     header:HeaderAbsensi
-    history:List[HistoryAbsensi]
+    history:Optional[List[HistoryAbsensi]]=[]
 
 class DataMenuAbsensiResponse(BaseModel):
     meta: MetaResponse

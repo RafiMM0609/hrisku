@@ -40,6 +40,7 @@ async def get_status_attendance(
                 Attendance.emp_id == user.id,
                 Attendance.isact == True,
                 Attendance.date == today,
+                Attendance.clock_out == None,
             )
         ).scalar_one_or_none()
         if not data_attendance:
@@ -66,26 +67,40 @@ async def get_menu_absensi(
     db: Session,
     user: User,
     src: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
 ) -> DataMenuAbsensi:
     try:
         # Data preparation
-        # query_data_att = (
-        #     select(Attendance).filter(
-        #         Attendance.emp_id == user.id,
-        #         Attendance.isact == True
-        #     ).limit(100)
-        # )
+        today = datetime.now(timezone(TZ)).date()
+        
+        # Default date range - current month
+        first_day_of_month = today.replace(day=1)
+        last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
+                    else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
+        
+        # Override with parameters if provided
+        start_date = datetime.strptime(start, "%d-%m-%Y").date() if start else first_day_of_month
+        end_date = datetime.strptime(end, "%d-%m-%Y").date() if end else last_day_of_month
+        
+        # Query attendance data with date filter
         data_att = db.execute(
             select(Attendance).filter(
-                Attendance.emp_id == user.id,
-                Attendance.isact == True
-            ).limit(100)
+            Attendance.emp_id == user.id,
+            Attendance.isact == True,
+            Attendance.date.between(start_date, end_date)
+            ).order_by(Attendance.date.desc())
+            .limit(100)
         ).scalars().all()
+        
         if not data_att:
-            return []
+            return DataMenuAbsensi(
+            this_month=today.strftime("%B %Y"),
+            header=HeaderAbsensi(), 
+            history=[]
+            ).dict()
         
         # Prepare header data
-        today = datetime.now(timezone(TZ)).date()
         header = HeaderAbsensi(
             total=len(data_att),
             hadir=sum(1 for att in data_att if att.status == "Hadir"),
@@ -419,40 +434,51 @@ async def add_checkout(
             raise ValueError("Attendance not found")
         # Status Logic
         checkout.clock_out = datetime.now(timezone(TZ))
+        # Ensure checkout.clock_in has timezone if it doesn't
+        if checkout.clock_in.tzinfo is None:
+            checkout.clock_in = checkout.clock_in.replace(tzinfo=timezone(TZ))
+            
         if checkout.status == "Terlambat":
             checkout.status = "Terlambat"
         elif shift.time_end >= checkout.clock_out.time():
             checkout.status = "Early leave"
-        elif (checkout.clock_out - datetime.combine(today, shift.time_end)).total_seconds() > 2 * 3600:
+        elif (checkout.clock_out - datetime.combine(today, shift.time_end).replace(tzinfo=timezone(TZ))).total_seconds() > 2 * 3600:
             checkout.status = "Lembur"
         else:
             checkout.status = status
-        
+
         # Data Timesheet preparation
-        # Calculate the time difference in hours and minutes
-        time_diff = checkout.clock_out - checkout.clock_in
-        total_seconds = time_diff.total_seconds()
+        if checkout.clock_in.tzinfo is None:
+            checkout.clock_in = timezone(TZ).localize(checkout.clock_in)
+        if checkout.clock_out.tzinfo is None:
+            checkout.clock_out = timezone(TZ).localize(checkout.clock_out)
+
+        # if isinstance(checkout.clock_in, datetime) and isinstance(checkout.clock_out, datetime):
+        #     time_diff = checkout.clock_out - checkout.clock_in
+        # else:
+        #     clock_in_dt = checkout.clock_in if isinstance(checkout.clock_in, datetime) else datetime.combine(today, checkout.clock_in).replace(tzinfo=timezone(TZ))
+        #     clock_out_dt = checkout.clock_out if isinstance(checkout.clock_out, datetime) else datetime.combine(today, checkout.clock_out).replace(tzinfo=timezone(TZ))
+        #     time_diff = clock_out_dt - clock_in_dt
+        # total_seconds = time_diff.total_seconds()
         # hours = int(total_seconds // 3600)
         # minutes = int((total_seconds % 3600) // 60)
         # formatted_hours = f"{hours} hours {minutes} minutes"
 
-        # For database storage, keep the decimal hours
-        total_hours = total_seconds / 3600  # Convert seconds to hours
+        # For database storage, convert seconds to hours
 
-        new_timesheet = TimeSheet(
-            emp_id=user.id,
-            client_id=user.client_id,
-            clock_in=checkout.clock_in,
-            clock_out=checkout.clock_out,
-            # total_hours=round(total_hours, 2),  # Round to 2 decimal places
-            total_hours=total_seconds,
-            # formatted_hours=formatted_hours,  # Store the formatted string if your model supports it
-            note=data.note,
-            created_by=user.id,
-            created_at=datetime.now(timezone(TZ)),
-            isact=True
-        )
-        db.add(new_timesheet)
+        # new_timesheet = TimeSheet(
+        #     emp_id=user.id,
+        #     client_id=user.client_id,
+        #     clock_in=datetime.combine(today, checkout.clock_in),
+        #     clock_out=datetime.combine(today, checkout.clock_out),
+        #     # total_hours=round(total_seconds / 3600, 2),  # Round to 2 decimal places
+        #     total_hours=total_seconds,
+        #     note=data.note,
+        #     created_by=user.id,
+        #     created_at=datetime.now(timezone(TZ)),
+        #     isact=True
+        # )
+        # db.add(new_timesheet)
 
         checkout.updated_by = user.id
         checkout.updated_at = datetime.now(timezone(TZ))

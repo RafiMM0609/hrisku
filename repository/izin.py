@@ -25,7 +25,8 @@ async def get_izin_option(
         izin = db.execute(query).scalars().all()
         return [DataIzin(
             id=i.id,
-            name=i.name
+            name=i.name,
+            kuota=10,
         ).dict() for i in izin]
     except Exception as e:
         print("Error get_izin_option", e)

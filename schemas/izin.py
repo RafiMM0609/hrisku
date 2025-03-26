@@ -17,6 +17,7 @@ class CreateSuccess(BaseModel):
 class DataIzin(BaseModel):
     id:int
     name:str
+    kuota:int
 
 class DataIzinResponse(BaseModel):
     meta: MetaResponse

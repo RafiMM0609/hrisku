@@ -460,17 +460,19 @@ async def list_leave_route(
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def list_leave_route(
+async def list_absensi_route(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
     start:Optional[str] = None,
     end:Optional[str] = None,
+    order: Optional[str] = "asc",
+    src: Optional[str] = None,    
 ):
     user = get_user_from_jwt_token(db, token)
     if not user:
         return Unauthorized()
     try:
-        data_shift = await mobileRepo.get_menu_absensi(db, user, start, end)
+        data_shift = await mobileRepo.get_menu_absensi(db, user,src, start, end, order)
         return common_response(Ok(
             message="Success Data Menu Absensi",
             data=data_shift,

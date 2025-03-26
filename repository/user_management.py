@@ -173,7 +173,7 @@ async def edit_user_validator(
 
         if payload.email:
             queries.append(select(User)
-                .filter(User.id_user != id, User.email == payload.email, User.isact==True).exists())
+                .filter(User.id != id, User.email == payload.email, User.isact==True).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
@@ -197,7 +197,7 @@ async def edit_user(
 ):
     try:
         user_exist = db.execute(
-            select(User).filter(User.id_user == id)
+            select(User).filter(User.id == id)
         ).scalar_one()
         if not user_exist:
             raise ValueError("User not found")

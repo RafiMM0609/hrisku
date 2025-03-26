@@ -89,15 +89,15 @@ class DataContractManagement(BaseModel):
 class DetailTalentMapping(BaseModel):
     talent_id:str
     name:str
-    dob:str="22-12-31"
-    nik:str
+    dob:Optional[str]=None
+    nik:Optional[str]=None
     email:str
     phone:str
     address:str
-    client:Organization
-    outlet:Organization
-    workdays:int
-    shift:List[ShiftResponse]
+    client:Optional[Organization]=None
+    outlet:Optional[Organization]=None
+    workdays:Optional[int]=None
+    shift:Optional[List[ShiftResponse]]=None
     contract:Optional[DataContractManagement]=None
 
 class ContractManagement(BaseModel):

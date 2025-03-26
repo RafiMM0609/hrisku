@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request
 # import logging
 import time
 # import uvicorn
-from sqlalchemy.ext.asyncio import AsyncSession
 from settings import (
     ENVIRONTMENT,
     SENTRY_DSN,

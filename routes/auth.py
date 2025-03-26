@@ -253,7 +253,7 @@ async def me(
                     "isact": user.isact,
                     "phone": user.phone,
                     "refreshed_token": refresh_token,
-                    "image": generate_link_download(user.face_id),
+                    "image": generate_link_download(user.photo),
                     "role": {
                         "id": user.roles[0].id if user.roles else None,
                         "name": user.roles[0].name if user.roles else None,

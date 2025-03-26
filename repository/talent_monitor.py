@@ -383,12 +383,18 @@ async def list_talent(
             User.phone,
             User.address,
             User.isact,
+            User.photo,
             )
-            .filter(User.isact == True))
+            .join(UserRole, User.id == UserRole.c.emp_id)
+            .filter(User.isact == True, UserRole.c.role_id == 1)
+            )
 
         # Query count untuk paginasi
-        query_count = (select(func.count(User.id))
-                       .filter(User.isact == True))
+        query_count = (
+            select(func.count(User.id))
+            .join(UserRole, User.id == UserRole.c.emp_id)
+            .filter(User.isact == True, UserRole.c.role_id == 1)
+            )
 
         # Jika ada pencarian (src), cari di nama user & nama client
         if src:
@@ -434,6 +440,7 @@ async def formating_talent(data:List[User]):
             "email": d.email,
             "phone": d.phone,
             "address": d.address,
+            "photo": generate_link_download(d.photo) if d.photo else None,
         })
     return ls_data
 

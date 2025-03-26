@@ -1,7 +1,7 @@
 from typing import Optional, List
 from math import ceil, radians, sin, cos, sqrt, atan2  # Add these imports for Haversine formula
 import secrets
-from sqlalchemy import select, func, distinct, or_, and_  # Added and_ import
+from sqlalchemy import select, func, distinct, or_, and_, case  # Added and_ import
 from sqlalchemy.orm import Session, aliased
 from models.User import User
 from models.Role import Role
@@ -69,6 +69,7 @@ async def get_menu_absensi(
     src: Optional[str] = None,
     start: Optional[str] = None,
     end: Optional[str] = None,
+    order: Optional[str] = "asc",
 ) -> DataMenuAbsensi:
     try:
         # Data preparation
@@ -84,12 +85,27 @@ async def get_menu_absensi(
         end_date = datetime.strptime(end, "%d-%m-%Y").date() if end else last_day_of_month
         
         # Query attendance data with date filter
-        data_att = db.execute(
+        query_data_att = (
             select(Attendance).filter(
             Attendance.emp_id == user.id,
             Attendance.isact == True,
             Attendance.date.between(start_date, end_date)
-            ).order_by(Attendance.date.desc())
+            )
+            .join(ClientOutlet, Attendance.loc_id == ClientOutlet.id, isouter=True)
+        )
+        if src:
+            query_data_att = query_data_att.filter(
+                or_(
+                    ClientOutlet.name.ilike(f"%{src}%")
+                )
+            )
+        if order == "asc":
+            query_data_att = query_data_att.order_by(Attendance.date.asc())
+        elif order == "desc":
+            query_data_att = query_data_att.order_by(Attendance.date.desc())
+
+        data_att = db.execute(
+            query_data_att
             .limit(100)
         ).scalars().all()
         
@@ -100,17 +116,39 @@ async def get_menu_absensi(
             history=[]
             ).dict()
         
+        grouped_data = db.execute(
+            select(
+                Attendance.date,
+                func.count().label("total"),
+                func.sum(case((Attendance.status == "Hadir", 1), else_=0)).label("hadir"),
+                func.sum(case((Attendance.status == "Absen", 1), else_=0)).label("absen"),
+                func.sum(case((Attendance.status == "Sakit", 1), else_=0)).label("sakit"),
+                func.sum(case((Attendance.status == "Cuti", 1), else_=0)).label("cuti"),
+                func.sum(case((Attendance.status == "Izin", 1), else_=0)).label("izin"),
+                func.sum(case((Attendance.status == "Terlambat", 1), else_=0)).label("terlambat"),
+                func.sum(case((Attendance.status == "Early leave", 1), else_=0)).label("early_leave"),
+                func.sum(case((Attendance.status == "Lembur", 1), else_=0)).label("lembur"),
+            )
+            .filter(
+                Attendance.emp_id == user.id,
+                Attendance.isact == True,
+                Attendance.date.between(start_date, end_date)
+            )
+            .group_by(Attendance.date)
+            .order_by(Attendance.date.desc())
+        ).fetchall()
+
         # Prepare header data
         header = HeaderAbsensi(
-            total=len(data_att),
-            hadir=sum(1 for att in data_att if att.status == "Hadir"),
-            absen=sum(1 for att in data_att if att.status == "Absen"),
-            sakit=sum(1 for att in data_att if att.status == "Sakit"),
-            cuti=sum(1 for att in data_att if att.status == "Cuti"),
-            izin=sum(1 for att in data_att if att.status == "Izin"),
-            terlambat=sum(1 for att in data_att if att.status == "Terlambat"),
-            early_leave=sum(1 for att in data_att if att.status == "Early leave"),
-            lembur=sum(1 for att in data_att if att.status == "Lembur"),
+            total=sum(1 if row.total > 0 else 0 for row in grouped_data),
+            hadir=sum(1 if row.hadir > 0 else 0 for row in grouped_data),
+            absen=sum(1 if row.absen > 0 else 0 for row in grouped_data),
+            sakit=sum(1 if row.sakit > 0 else 0 for row in grouped_data),
+            cuti=sum(1 if row.cuti > 0 else 0 for row in grouped_data),
+            izin=sum(1 if row.izin > 0 else 0 for row in grouped_data),
+            terlambat=sum(1 if row.terlambat > 0 else 0 for row in grouped_data),
+            early_leave=sum(1 if row.early_leave > 0 else 0 for row in grouped_data),
+            lembur=sum(1 if row.lembur > 0 else 0 for row in grouped_data),
         )
 
         # Prepare history data

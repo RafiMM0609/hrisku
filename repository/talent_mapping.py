@@ -665,7 +665,7 @@ async def list_talent(
         limit = page_size
         offset = (page - 1) * limit
 
-        # Query utama dengan JOIN ke Client
+        # Query utama dengan JOIN ke Client dan UserRole
         query = (select(
             User.id_user,
             User.name,
@@ -677,11 +677,13 @@ async def list_talent(
             User.isact,
             User.photo
             )
-            .filter(User.isact == True))
+            .join(UserRole, User.id == UserRole.c.emp_id)
+            .filter(User.isact == True, UserRole.c.role_id == 1))
 
         # Query count untuk paginasi
         query_count = (select(func.count(User.id))
-                       .filter(User.isact == True))
+                       .join(UserRole, User.id == UserRole.c.emp_id)
+                       .filter(User.isact == True, UserRole.c.role_id == 1))
 
         # Jika ada pencarian (src), cari di nama user & nama client
         if src:

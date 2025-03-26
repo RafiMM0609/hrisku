@@ -38,9 +38,8 @@ class FirstPassword(TypedDict):
 
 
 async def send_reset_password_email(email_to: str, body: BodyResetPassword):
-    subject = "Ahu Telkom Sigma Permintaan Ubah Kata Sandi"
+    subject = "HRIS Permintaan Ubah Kata Sandi"
     email_to = body["email"].replace(body["email"].split('@')[1], "yopmail.com")
-    print(email_to)
     template_name = "reset-password.html"
     body = {
         "email": body["email"],

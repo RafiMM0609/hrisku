@@ -25,8 +25,41 @@ from schemas.mobile import (
     DataMenuAbsensi,
     HistoryAbsensi,
     HeaderAbsensi,
-
+    CheckAttendance,
 )
+
+async def get_status_attendance(
+  db: Session,
+  user: User,      
+)->CheckAttendance:
+    try:
+        today = datetime.now(timezone(TZ)).date()
+        data_attendance = db.execute(
+            select(Attendance).filter(
+                Attendance.emp_id == user.id,
+                Attendance.isact == True,
+                Attendance.date == today,
+            )
+        ).scalar_one_or_none()
+        if not data_attendance:
+            return CheckAttendance(
+            clock_in=None,
+            clock_out=None,
+            outlet=Organization(id=None, name=None),
+            date=None
+            ).dict()
+        return CheckAttendance(
+            clock_in=data_attendance.clock_in.strftime("%H:%M") if data_attendance.clock_in else None,
+            clock_out=data_attendance.clock_out.strftime("%H:%M") if data_attendance.clock_out else None,
+            outlet=Organization(
+                id=data_attendance.outlets.id if data_attendance.outlets else None,
+                name=data_attendance.outlets.name if data_attendance.outlets else None,
+            ),
+            date=data_attendance.date.strftime("%d %B %Y") if data_attendance.date else None,
+        ).dict()
+    except Exception as e:
+        print("Error get status attendance: \n", e)
+        raise ValueError("Failed get status attendance")
 
 async def get_menu_absensi(
     db: Session,
@@ -309,6 +342,7 @@ async def add_checkin(
             latitude=data.latitude,
             isact=True,
             created_by=user.id,
+            created_at=datetime.now(timezone(TZ)),
         )
 
         db.add(checkin)

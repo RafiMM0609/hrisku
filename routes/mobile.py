@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile, BackgroundTa
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from models import get_db
+from core.mail import send_reset_password_email
 from core.file import preview_file_from_minio, upload_file_to_minio, download_file, upload_file
 from core.responses import (
     Created,
@@ -26,12 +27,74 @@ from schemas.auth import (
     FirstLoginUserRequest,
     LoginRequest,
     LoginSuccessResponse,
+    ForgotPasswordSendEmailResponse,
+    ForgotPasswordSendEmailRequest,
+    ForgotPasswordChangePasswordRequest,
+    ForgotPasswordChangePasswordResponse,
 )
 from settings import MINIO_BUCKET
 import os
 
 router = APIRouter(tags=["Mobile"])
 
+
+@router.post(
+    "/forgot-password/send-email",
+    responses={
+        "200": {"model": ForgotPasswordSendEmailResponse},
+        "400": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def request_forgot_password_send_email(
+    request: ForgotPasswordSendEmailRequest,
+    db: Session = Depends(get_db)
+    # token: str = Depends(oauth2_scheme)
+):
+    try:
+        user, status = await authRepo.get_user_by_email(db=db, email=request.email)
+        if user == None:
+            return common_response(BadRequest(message='user not found'))
+
+        token = await authRepo.generate_token_forgot_password(db=db, user=user)
+        await send_reset_password_email(
+            email_to=user.email, 
+            body={
+                "email": user.email,
+                "token": token,
+            })
+        return common_response(
+            Ok(
+                message="success kirim email ganti password, silahkan cek email anda"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+
+@router.post(
+    "/forgot-password/change-password",
+    responses={
+        "200": {"model": ForgotPasswordChangePasswordResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def request_forgot_password_change_password(
+    request: ForgotPasswordChangePasswordRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        user = await authRepo.change_user_password_by_token(
+            db=db, token=request.token, new_password=request.password
+        )
+        if user == None:
+            return common_response(BadRequest(message="User Not Found"))
+        elif user == False:
+            return common_response(Unauthorized(message="Invalid/Expired Token for Change Password"))
+
+        return common_response(Ok(message="success menganti password anda"))
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
 
 @router.post(
     "/login",
@@ -190,6 +253,34 @@ async def checkin(
         await mobileRepo.add_checkin(db, data, user)
         return common_response(CudResponse(
             message="Success check-in"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/status-checkin",
+    responses={
+        "200": {"model": CheckAttendanceResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def status_checkin(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    """
+    Endpoint for status employee check-in.
+    """
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data = await mobileRepo.get_status_attendance(db, user)
+        return common_response(Ok(
+            message="Success get data",
+            data=data
             )
         )
     except Exception as e:

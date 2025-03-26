@@ -2,8 +2,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 class Organization(BaseModel):
-    id:int
-    name:str
+    id:Optional[int]=None
+    name:Optional[str]=None
     
 class MetaResponse(BaseModel):
     count:int
@@ -111,6 +111,19 @@ class DataMenuAbsensi(BaseModel):
 class DataMenuAbsensiResponse(BaseModel):
     meta: MetaResponse
     data: DataMenuAbsensi
+    status: str
+    code: int
+    message: str
+
+class CheckAttendance(BaseModel):
+    clock_in:Optional[str]=None
+    clock_out:Optional[str]=None
+    outlet:Optional[Organization]=None
+    date:Optional[str]=None
+
+class CheckAttendanceResponse(BaseModel):
+    meta: MetaResponse
+    data: CheckAttendance
     status: str
     code: int
     message: str

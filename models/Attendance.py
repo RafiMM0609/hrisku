@@ -26,8 +26,8 @@ class Attendance(Base):
     date = Column(Date, nullable=True)
     clock_in = Column(Time, nullable=True)
     clock_out = Column(Time, nullable=True)
-    longitude = Column(Numeric(10, 6), nullable=True)
-    latitude = Column(Numeric(10, 6), nullable=True)
+    longitude = Column(Numeric(12, 8), nullable=True)
+    latitude = Column(Numeric(12, 8), nullable=True)
     status = Column(String(100), nullable=True)  # Updated to store attendance type
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)

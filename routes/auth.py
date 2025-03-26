@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from asyncpg.exceptions import UniqueViolationError
 from models import get_db
 from core.file import generate_link_download
+from core.mail import send_reset_password_email
 from models.User import User
 from core.security import (
     generate_hash_password,
@@ -42,6 +43,12 @@ from schemas.auth import (
     RegisRequest,
     FirstLoginUserRequest,
     MenuResponse,
+    ChangePasswordRequest,
+    ChangePasswordSuccessResponse,
+    ForgotPasswordSendEmailResponse,
+    ForgotPasswordSendEmailRequest,
+    ForgotPasswordChangePasswordRequest,
+    ForgotPasswordChangePasswordResponse,
 )
 # from core.file import generate_link_download
 from repository import auth as authRepo
@@ -166,31 +173,31 @@ async def login(
         username = request.email
         password = request.password
 
-        # Make an external request to the given URL
-        url = "https://face.anaratech.com/auth/token"
-        headers = {
-            "accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-        data = {
-            "grant_type": "password",
-            "username": username,
-            "password": password,
-            "scope": "",
-            "client_id": "string",
-            "client_secret": "string",
-        }
-        if status:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(url, headers=headers, data=data)
+        # # Make an external request to the given URL
+        # url = "https://face.anaratech.com/auth/token"
+        # headers = {
+        #     "accept": "application/json",
+        #     "Content-Type": "application/x-www-form-urlencoded",
+        # }
+        # data = {
+        #     "grant_type": "password",
+        #     "username": username,
+        #     "password": password,
+        #     "scope": "",
+        #     "client_id": "string",
+        #     "client_secret": "string",
+        # }
+        # if status:
+        #     async with httpx.AsyncClient() as client:
+        #         response = await client.post(url, headers=headers, data=data)
 
-            # Check if the external request was successful
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
-            data_face =  response.json()
+        #     # Check if the external request was successful
+        #     if response.status_code != 200:
+        #         raise HTTPException(status_code=response.status_code, detail=response.text)
+        #     data_face =  response.json()
 
         # Return the response from the external service
-        face_id_token = data_face["access_token"] if status else None
+        # face_id_token = data_face["access_token"] if status else None
         return common_response(
                 CudResponse(
                     data={
@@ -203,7 +210,7 @@ async def login(
                             "id": user.roles[0].id
                         },
                         "token": token,
-                        "token_face_id": face_id_token,
+                        "token_face_id": None,
                         "change_password": not status
                     },
                     message="Login Success"
@@ -360,3 +367,95 @@ async def menu(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme
 
         traceback.print_exc()
         return common_response(BadRequest(message=str(e)))
+    
+
+@router.post(
+    "/forgot-password/send-email",
+    responses={
+        "200": {"model": ForgotPasswordSendEmailResponse},
+        "400": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def request_forgot_password_send_email(
+    request: ForgotPasswordSendEmailRequest,
+    db: Session = Depends(get_db)
+    # token: str = Depends(oauth2_scheme)
+):
+    try:
+        user, status = await authRepo.get_user_by_email(db=db, email=request.email)
+        if user == None:
+            return common_response(BadRequest(message='user not found'))
+
+        token = await authRepo.generate_token_forgot_password(db=db, user=user)
+        await send_reset_password_email(
+            email_to=user.email, 
+            body={
+                "email": user.email,
+                "token": token,
+            })
+        return common_response(
+            Ok(
+                message="success kirim email ganti password, silahkan cek email anda"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+
+@router.post(
+    "/forgot-password/change-password",
+    responses={
+        "200": {"model": ForgotPasswordChangePasswordResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def request_forgot_password_change_password(
+    request: ForgotPasswordChangePasswordRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        user = await authRepo.change_user_password_by_token(
+            db=db, token=request.token, new_password=request.password
+        )
+        if user == None:
+            return common_response(BadRequest(message="User Not Found"))
+        elif user == False:
+            return common_response(Unauthorized(message="Invalid/Expired Token for Change Password"))
+
+        return common_response(Ok(message="success menganti password anda"))
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+
+# @router.post(
+#     "/change-password",
+#     responses={
+#         "200": {"model": ChangePasswordSuccessResponse},
+#         "401": {"model": UnauthorizedResponse},
+#         "500": {"model": InternalServerErrorResponse},
+#     },
+# )
+# async def change_password(
+#     payload: ChangePasswordRequest,
+#     db: Session = Depends(get_db),
+#     token: str = Depends(oauth2_scheme)
+# ):
+#     try:
+#         user = get_user_from_jwt_token(db, token)
+#         if not user:
+#             return common_response(Unauthorized())
+#         # ======== BEGIN CHECK OLD PASSWORD
+#         is_valid = await authRepo.check_user_password(db, user.username, payload.old_password)
+#         if not is_valid:
+#             # print('------------ PASSWORD GA SAMA -----------------')
+#             return common_response(BadRequest(message="password sebelumnya salah"))
+#         # ======== END CHECL OLD PASSWORD
+
+#         await authRepo.change_user_password(
+#             db=db, user=is_valid, new_password=payload.new_password
+#         )   
+
+#         return common_response(Ok(dmessage="password berhasil diganti"))
+#     except Exception as e:
+#         return common_response(BadRequest(message=str(e)))

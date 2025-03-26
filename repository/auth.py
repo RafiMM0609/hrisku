@@ -374,7 +374,7 @@ async def generate_token_forgot_password(db: Session, user: User) -> str:
     generate token -> save user and token to database -> return generated token
     """
     token = generate_token()
-    forgot_password = ForgotPassword(user=user, token=token, created_date = datetime.now(tz=timezone(TZ)))
+    forgot_password = ForgotPassword(user_id=user.id, token=token, created_date = datetime.now(tz=timezone(TZ)))
     db.add(forgot_password)
     db.commit()
     return token
@@ -394,10 +394,11 @@ async def change_user_password_by_token(
     if forgot_password == None:
         return None
 
-    if (forgot_password.created_date + timedelta(minutes=10)) < datetime.now(timezone(TZ)):
+    if (forgot_password.created_date + timedelta(minutes=10)) < datetime.now():
         return False
 
-    user = forgot_password.user
+    user_id = forgot_password.user_id
+    user = db.execute(select(User).filter(User.id == user_id)).scalar()
     user.password = generate_hash_password(password=new_password)
     db.add(user)
     db.query(ForgotPassword).where(ForgotPassword.user_id == user.id).delete()

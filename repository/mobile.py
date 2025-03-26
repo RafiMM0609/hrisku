@@ -448,10 +448,12 @@ async def add_checkout(
             checkout.status = status
 
         # Data Timesheet preparation
-        if checkout.clock_in.tzinfo is None:
-            checkout.clock_in = timezone(TZ).localize(checkout.clock_in)
-        if checkout.clock_out.tzinfo is None:
-            checkout.clock_out = timezone(TZ).localize(checkout.clock_out)
+        # if checkout.clock_in.tzinfo is None:
+        #     checkout.clock_in = timezone(TZ).localize(checkout.clock_in)
+        # if checkout.clock_out.tzinfo is None:
+        #     checkout.clock_out = timezone(TZ).localize(checkout.clock_out)
+
+        # # Calucalate Duration
 
         # if isinstance(checkout.clock_in, datetime) and isinstance(checkout.clock_out, datetime):
         #     time_diff = checkout.clock_out - checkout.clock_in
@@ -465,12 +467,22 @@ async def add_checkout(
         # formatted_hours = f"{hours} hours {minutes} minutes"
 
         # For database storage, convert seconds to hours
+        
+        # # Properly handle the datetime conversion for TimeSheet
+        # clock_in_dt = checkout.clock_in if isinstance(checkout.clock_in, datetime) else datetime.combine(today, checkout.clock_in)
+        # clock_out_dt = checkout.clock_out if isinstance(checkout.clock_out, datetime) else datetime.combine(today, checkout.clock_out)
+        
+        # # Make sure timezone info is preserved
+        # if clock_in_dt.tzinfo is None:
+        #     clock_in_dt = clock_in_dt.replace(tzinfo=timezone(TZ))
+        # if clock_out_dt.tzinfo is None:
+        #     clock_out_dt = clock_out_dt.replace(tzinfo=timezone(TZ))
 
         # new_timesheet = TimeSheet(
         #     emp_id=user.id,
         #     client_id=user.client_id,
-        #     clock_in=datetime.combine(today, checkout.clock_in),
-        #     clock_out=datetime.combine(today, checkout.clock_out),
+        #     clock_in=clock_in_dt,
+        #     clock_out=clock_out_dt,
         #     # total_hours=round(total_seconds / 3600, 2),  # Round to 2 decimal places
         #     total_hours=total_seconds,
         #     note=data.note,

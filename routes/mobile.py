@@ -200,7 +200,7 @@ async def first_login_user(
             user=user,
             payload=payload,
         )
-        return CudResponse(message="Success change password")
+        return common_response(CudResponse(message="Success change password"))
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
 @router.post(
@@ -228,7 +228,7 @@ async def regis_face_route(
         )
         if not data:
             raise ValueError('Your picture are not valid')
-        return CudResponse(message="Picture verified")
+        return common_response(CudResponse(message="Picture verified"))
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
 

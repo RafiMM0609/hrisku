@@ -548,12 +548,13 @@ async def edit_talent(
                 user.id,
                 user_exist.outlet_id,
             )
-        background_tasks.add_task(
-            edit_contract,
-            user.id,
-            user_exist.id,
-            payload.contract,
-        )
+        if payload.contract:
+            background_tasks.add_task(
+                edit_contract,
+                user.id,
+                user_exist.id,
+                payload.contract,
+            )
     except Exception as e:
         print("Error regis talent : \n", e)
         raise ValueError("Failed regis talent")

@@ -136,9 +136,9 @@ class EditTalentRequest(BaseModel):
     address: str
     client_id : int
     outlet_id : int
-    shift: Optional[List[ShiftEdit]]
-    workdays: Optional[int]
-    contract: Optional[EditContractManagement]
+    shift: Optional[List[ShiftEdit]]=None
+    workdays: Optional[int]=None
+    contract: Optional[EditContractManagement]=None
     
     
 class ViewPersonalInformation(BaseModel):

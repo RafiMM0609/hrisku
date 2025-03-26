@@ -1,8 +1,8 @@
 from typing import Optional, List
 from math import ceil
 import secrets
-from sqlalchemy import select, func, distinct, update
-from sqlalchemy.orm import Session, joinedload, subqueryload
+from sqlalchemy import select, func, distinct, update, or_
+from sqlalchemy.orm import Session, joinedload, subqueryload 
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
 from models.Role import Role
@@ -440,17 +440,27 @@ async def list_client(
         limit = page_size
         offset = (page - 1) * limit
 
-        query = (select(Client).filter(Client.isact==True)
+        query = (
+            select(Client)
+            .filter(Client.isact==True)
         )
-        query_count = (select(func.count(Client.id)).filter(Client.isact==True)
+        query_count = (
+            select(func.count(Client.id))
+            .filter(Client.isact==True)
         )
 
         if src:
             query = (query
-                     .filter(Client.name.ilike(f"%{src}%"))
+                     .filter(or_(
+                         Client.name.ilike(f"%{src}%"),
+                         Client.address.ilike(f"%{src}%")
+                        ))
                      )
             query_count = (query_count
-                     .filter(Client.name.ilike(f"%{src}%"))
+                     .filter(or_(
+                         Client.name.ilike(f"%{src}%"),
+                         Client.address.ilike(f"%{src}%")
+                        ))
                      )
 
         query = (

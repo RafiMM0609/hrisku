@@ -34,6 +34,7 @@ class CheckoutRequest(BaseModel):
     latitude:float
     longitude:float
     outlet_id:int
+    note:str
 
 class LeaveRequest(BaseModel):
     leave_id: int

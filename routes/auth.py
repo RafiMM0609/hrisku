@@ -266,13 +266,13 @@ async def me(
                         "name": user.client_user.name if user.client_user else None,
                     },
                     "contact":{
-                        "id": user.contract_user.id if user.contract_user else None,
-                        "start": user.contract_user.start.strftime("%d %B %Y") if user.contract_user else None,
-                        "end": user.contract_user.end.strftime("%d %B %Y") if user.contract_user else None,
+                        "id": user.contract_user[0].id if user.contract_user else None,
+                        "start": user.contract_user[0].start.strftime("%d %B %Y") if user.contract_user else None,
+                        "end": user.contract_user[0].end.strftime("%d %B %Y") if user.contract_user else None,
                     },
                     "outlet":{
-                        "id": user.outlet_id,
-                        "name": user.user_outlet.name,
+                        "id": user.outlet_id if user.outlet_id else None,
+                        "name": user.user_outlet.name if user.user_outlet else None,
                     }
                 }
             )

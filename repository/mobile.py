@@ -9,6 +9,7 @@ from models.Attendance import Attendance
 from models.ShiftSchedule import ShiftSchedule
 from models.LeaveTable import LeaveTable
 from models.ClientOutlet import ClientOutlet
+from models.TimeSheet import TimeSheet
 from models.Izin import Izin
 from datetime import datetime, timedelta
 from pytz import timezone
@@ -314,21 +315,30 @@ async def add_checkin(
         ).scalar_one_or_none()
         if not shift:
             raise ValueError("Shift not found")
-        # Check if user already checkin
+        # Check if user already checkin and not checkout
         query_attendance = db.execute(
             select(Attendance).filter(
                 Attendance.emp_id==user.id, 
                 Attendance.isact==True,
                 Attendance.date==today,
+                Attendance.clock_out==None,
                 )
         )
         if query_attendance.scalar_one_or_none():
             raise ValueError("Already checkin")
 
         # Status Logic
-        checkin = datetime.now(timezone(TZ))
-        if shift.time_start <= checkin.time():
-            status = "Terlambat"
+        status = await check_first_attendance(
+                db=db,
+                today=today,
+                user=user,
+                shift=shift,
+                status=status,
+            )
+        
+        # checkin = datetime.now(timezone(TZ))
+        # if shift.time_start <= checkin.time():
+        #     status = "Terlambat"
 
         # Insert data
         checkin = Attendance(
@@ -351,7 +361,31 @@ async def add_checkin(
         
     except Exception as e:
         print("Error add checkin: \n", e)
-        raise ValueError("Failed checkin")
+        raise ValueError(e)
+    
+async def check_first_attendance(
+    db:Session,
+    today:any,
+    user:User,
+    shift:any,
+    status:str,
+):
+    try:
+        query_count_attendance = db.execute(
+            select(func.count(Attendance.id)).filter(
+                Attendance.emp_id==user.id, 
+                Attendance.isact==True,
+                Attendance.date==today,
+                )
+        )
+        query_attendance = query_count_attendance.scalar()
+        if query_attendance == 0:
+            checkin = datetime.now(timezone(TZ))
+            if shift.time_start <= checkin.time():
+                status = "Terlambat"
+        return status
+    except Exception as e:
+        raise ValueError(e)
 
 async def add_checkout(
     db:Session,
@@ -375,7 +409,8 @@ async def add_checkout(
             select(Attendance).filter(
                 Attendance.emp_id==user.id, 
                 Attendance.isact==True,
-                Attendance.date==today
+                Attendance.date==today,
+                Attendance.clock_out==None,
                 )
         )
         # Insert data
@@ -392,6 +427,32 @@ async def add_checkout(
             checkout.status = "Lembur"
         else:
             checkout.status = status
+        
+        # Data Timesheet preparation
+        # Calculate the time difference in hours and minutes
+        time_diff = checkout.clock_out - checkout.clock_in
+        total_seconds = time_diff.total_seconds()
+        # hours = int(total_seconds // 3600)
+        # minutes = int((total_seconds % 3600) // 60)
+        # formatted_hours = f"{hours} hours {minutes} minutes"
+
+        # For database storage, keep the decimal hours
+        total_hours = total_seconds / 3600  # Convert seconds to hours
+
+        new_timesheet = TimeSheet(
+            emp_id=user.id,
+            client_id=user.client_id,
+            clock_in=checkout.clock_in,
+            clock_out=checkout.clock_out,
+            # total_hours=round(total_hours, 2),  # Round to 2 decimal places
+            total_hours=total_seconds,
+            # formatted_hours=formatted_hours,  # Store the formatted string if your model supports it
+            note=data.note,
+            created_by=user.id,
+            created_at=datetime.now(timezone(TZ)),
+            isact=True
+        )
+        db.add(new_timesheet)
 
         checkout.updated_by = user.id
         checkout.updated_at = datetime.now(timezone(TZ))

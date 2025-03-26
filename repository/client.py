@@ -132,15 +132,6 @@ async def add_client(
                 payload.outlet,
                 new_client.id
             )
-        # for data in payload.outlet:
-        #     new_outlet = ClientOutlet(
-        #         client_id = new_client.id,
-        #         name = data.name,
-        #         longitude = data.longitude,
-        #         latitude = data.latitude,
-        #         address = data.address
-        #     )
-        #     ls_outlet.append(new_outlet)
         if isinstance(payload.bpjs, (list, tuple)):
             for data in payload.bpjs:
                 new_bpjs = Bpjs(
@@ -356,6 +347,8 @@ async def edit_bpjs(data, client_id):
         return "oke"                
     except Exception as e:
         print("Error edit bpjs: \n", e)
+    finally:
+        db.close()  # Always ensure connection is closed properly
 async def edit_allowences(data, client_id):
     db = SessionLocal()  # Ambil koneksi dari pool
     db.execute(
@@ -387,6 +380,8 @@ async def edit_allowences(data, client_id):
         return "oke"                
     except Exception as e:
         print("Error edit allowence: \n", e)
+    finally:
+        db.close()  # Always ensure connection is closed properly
 async def edit_outlet(data, client_id):
     db = SessionLocal()  # Ambil koneksi dari pool
     db.execute(
@@ -429,6 +424,8 @@ async def edit_outlet(data, client_id):
         return "oke"                
     except Exception as e:
         print("Error edit outlet: \n", e)
+    finally:
+        db.close()  # Always ensure connection is closed properly
     
 async def list_client(
     db:Session,

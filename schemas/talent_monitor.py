@@ -167,6 +167,7 @@ class TimeSheetHistory(BaseModel):
     date:Optional[str]=None
     working_hours:int
     notes:Optional[str]=None
+    outlet:Optional[Organization]=None
 
 class TalentTimesheet(BaseModel):
     name: str

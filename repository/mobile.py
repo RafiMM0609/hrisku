@@ -1,17 +1,18 @@
-from typing import Optional, List
+from typing import Optional, List, Type
 from math import ceil, radians, sin, cos, sqrt, atan2  # Add these imports for Haversine formula
 import secrets
 from sqlalchemy import select, func, distinct, or_, and_, case  # Added and_ import
 from sqlalchemy.orm import Session, aliased
 from models.User import User
 from models.Role import Role
+from models import SessionLocal
 from models.Attendance import Attendance
 from models.ShiftSchedule import ShiftSchedule
 from models.LeaveTable import LeaveTable
 from models.ClientOutlet import ClientOutlet
 from models.TimeSheet import TimeSheet
 from models.Izin import Izin
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
 from fastapi import UploadFile
@@ -444,7 +445,8 @@ async def add_checkout(
     db:Session,
     data:CheckoutRequest,
     user:User,
-    status:str="Hadir"
+    status:str="Hadir",
+    background_tasks:any=None,
 ):
     try:
         # Data Preparation
@@ -486,47 +488,66 @@ async def add_checkout(
             checkout.status = status
 
         # Data Timesheet preparation
-        # if checkout.clock_in.tzinfo is None:
-        #     checkout.clock_in = timezone(TZ).localize(checkout.clock_in)
-        # if checkout.clock_out.tzinfo is None:
-        #     checkout.clock_out = timezone(TZ).localize(checkout.clock_out)
+        if checkout.clock_in.tzinfo is None:
+            checkout.clock_in = timezone(TZ).localize(checkout.clock_in)
+        if checkout.clock_out.tzinfo is None:
+            checkout.clock_out = timezone(TZ).localize(checkout.clock_out)
 
-        # # Calucalate Duration
-
-        # if isinstance(checkout.clock_in, datetime) and isinstance(checkout.clock_out, datetime):
-        #     time_diff = checkout.clock_out - checkout.clock_in
-        # else:
-        #     clock_in_dt = checkout.clock_in if isinstance(checkout.clock_in, datetime) else datetime.combine(today, checkout.clock_in).replace(tzinfo=timezone(TZ))
-        #     clock_out_dt = checkout.clock_out if isinstance(checkout.clock_out, datetime) else datetime.combine(today, checkout.clock_out).replace(tzinfo=timezone(TZ))
-        #     time_diff = clock_out_dt - clock_in_dt
-        # total_seconds = time_diff.total_seconds()
-        # hours = int(total_seconds // 3600)
-        # minutes = int((total_seconds % 3600) // 60)
-        # formatted_hours = f"{hours} hours {minutes} minutes"
-
-        # For database storage, convert seconds to hours
+        # Calculate Duration
+        if isinstance(checkout.clock_in, datetime) and isinstance(checkout.clock_out, datetime):
+            time_diff = checkout.clock_out - checkout.clock_in
+        else:
+            clock_in_dt = checkout.clock_in if isinstance(checkout.clock_in, datetime) else datetime.combine(today, checkout.clock_in).replace(tzinfo=timezone(TZ))
+            clock_out_dt = checkout.clock_out if isinstance(checkout.clock_out, datetime) else datetime.combine(today, checkout.clock_out).replace(tzinfo=timezone(TZ))
+            time_diff = clock_out_dt - clock_in_dt
+            
+        # We need to extract hours, minutes, seconds from the timedelta to create a time object
+        total_seconds = time_diff.total_seconds()
         
-        # # Properly handle the datetime conversion for TimeSheet
-        # clock_in_dt = checkout.clock_in if isinstance(checkout.clock_in, datetime) else datetime.combine(today, checkout.clock_in)
-        # clock_out_dt = checkout.clock_out if isinstance(checkout.clock_out, datetime) else datetime.combine(today, checkout.clock_out)
+        hours, remainder = divmod(int(total_seconds), 3600)
+        minutes, seconds = divmod(remainder, 60)
         
-        # # Make sure timezone info is preserved
-        # if clock_in_dt.tzinfo is None:
-        #     clock_in_dt = clock_in_dt.replace(tzinfo=timezone(TZ))
-        # if clock_out_dt.tzinfo is None:
-        #     clock_out_dt = clock_out_dt.replace(tzinfo=timezone(TZ))
+        # Handle potential overflow for hours (MySQL TIME can store values up to 838:59:59)
+        hours = min(hours, 838)
 
+        time_duration = time(hour=hours, minute=minutes, second=seconds)
+        
+        # Properly handle the datetime conversion for TimeSheet
+        if clock_in_dt.tzinfo is None:
+            clock_in_dt = clock_in_dt.replace(tzinfo=timezone(TZ))
+        if clock_out_dt.tzinfo is None:
+            clock_out_dt = clock_out_dt.replace(tzinfo=timezone(TZ))
+
+        # Create a dictionary of timesheet data
+        timesheet_data = {
+            "emp_id": user.id,
+            "client_id": user.client_id,
+            "clock_in": clock_in_dt,
+            "clock_out": clock_out_dt,
+            "total_hours": time_duration,
+            "note": data.note,
+            "created_by": user.id,
+            "created_at": datetime.now(timezone(TZ)),
+            "isact": True,
+            "outlet_id": checkout.loc_id,
+        }
+
+        background_tasks.add_task(
+            add_timesheet,
+            timesheet_data
+        )
+        
         # new_timesheet = TimeSheet(
         #     emp_id=user.id,
         #     client_id=user.client_id,
         #     clock_in=clock_in_dt,
         #     clock_out=clock_out_dt,
-        #     # total_hours=round(total_seconds / 3600, 2),  # Round to 2 decimal places
-        #     total_hours=total_seconds,
+        #     total_hours=time_duration,
         #     note=data.note,
         #     created_by=user.id,
         #     created_at=datetime.now(timezone(TZ)),
-        #     isact=True
+        #     isact=True,
+        #     outlet_id=checkout.loc_id,
         # )
         # db.add(new_timesheet)
 
@@ -539,6 +560,26 @@ async def add_checkout(
     except Exception as e:
         print("Error add checkout: \n", e)
         raise ValueError("Failed checkout")
+
+async def add_timesheet(
+    payload:Type[any]
+):
+    db = SessionLocal()  # Get connection from pool
+    try:
+        print("Starting TimeSheet addition")
+        new_timesheet = TimeSheet(
+            **payload
+        )
+        db.add(new_timesheet)
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()  # Rollback any changes on error
+        print(f"Error adding timesheet: {str(e)}")
+        # Log the error but don't raise exception in background task
+        return False
+    finally:
+        db.close()  # Always ensure connection is closed properly
     
 async def add_izin(
     db: Session,

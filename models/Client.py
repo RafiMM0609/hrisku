@@ -41,7 +41,7 @@ class Client(Base):
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
     isact = Column(Boolean, default=True)
-    payment_status = Column(Boolean, default=True)
+    payment_status = Column(Boolean, default=False)
     due_date_payment = Column(Date, nullable=True)
     id_client = Column(String, nullable=True, index=True)
     photo = Column(String, nullable=False)

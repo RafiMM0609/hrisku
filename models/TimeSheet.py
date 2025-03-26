@@ -19,9 +19,10 @@ class TimeSheet(Base):
     id = Column(Integer, primary_key=True, nullable=False, index=True)
     emp_id = Column(String(36), ForeignKey("user.id"), nullable=False, index=True)
     client_id = Column(Integer, ForeignKey("client.id"), nullable=False, index=True)
+    outlet_id = Column(Integer, ForeignKey("client_outlet.id"), nullable=False, index=True)
     clock_in = Column(DateTime, nullable=True)
     clock_out = Column(DateTime, nullable=True)
-    total_hours = Column(Integer, nullable=True)
+    total_hours = Column(Time, nullable=True)
     note = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
@@ -32,3 +33,4 @@ class TimeSheet(Base):
     # Many to Many
     users = relationship("User", back_populates="timesheet_user", foreign_keys=[emp_id])
     clients = relationship("Client", back_populates="timesheet_client", foreign_keys=[client_id])
+    outlets = relationship("ClientOutlet", back_populates="timesheet_outlet", foreign_keys=[outlet_id])

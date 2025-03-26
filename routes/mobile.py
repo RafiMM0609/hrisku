@@ -334,6 +334,7 @@ async def check_location_routes(
 )
 async def checkout(
     data: CheckoutRequest,
+    background_tasks: BackgroundTasks,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
@@ -344,7 +345,12 @@ async def checkout(
     if not user:
         return Unauthorized()
     try:
-        await mobileRepo.add_checkout(db, data, user)
+        await mobileRepo.add_checkout(
+            db=db, 
+            data=data, 
+            user=user, 
+            background_tasks=background_tasks
+        )
         return common_response(CudResponse(message="Success check-out"))
     except Exception as e:
         return common_response(BadRequest(message=str(e)))

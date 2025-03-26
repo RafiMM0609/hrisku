@@ -131,8 +131,13 @@ async def get_talent_timesheet(
             timesheet.append(TimeSheetHistory(
                 date=history.date.strftime("%A, %d %B %Y") if history.date else None,
                 working_hours=history.total_hours,
-                notes=history.note
-            ))
+                notes=history.note,
+                outlet=Organization(
+                    id=history.outlets.id if history.outlets else 0,
+                    name=history.outlets.name if history.outlets else None
+                    )
+                )
+            )
 
         return TalentTimesheet(
             name=user.name,

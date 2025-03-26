@@ -13,6 +13,7 @@ from models import Base
 from models.UserRole import UserRole
 from models.RolePermission import RolePermission
 from models.Attendance import Attendance
+from models.TimeSheet import TimeSheet
 
 
 class ClientOutlet(Base):
@@ -39,4 +40,5 @@ class ClientOutlet(Base):
     client = relationship("Client", back_populates="outlets")
     outlet_user = relationship("User", back_populates="user_outlet")
     attendance_outlet = relationship("Attendance", back_populates="outlets")
+    timesheet_outlet = relationship("TimeSheet", back_populates="outlets")
     # outlet_user = relationship("User", back_populates="user_outlet", foreign_keys=[User.outlet_id])

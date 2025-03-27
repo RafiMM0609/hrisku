@@ -1,6 +1,6 @@
 from typing import Optional, List
 from math import ceil
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session
 from models.Client import Client
 from core.file import generate_link_download
@@ -172,10 +172,16 @@ async def list_client_billing(
 
         if src:
             query = (query
-                     .filter(Client.name.ilike(f"%{src}%"))
+                     .filter(or_(
+                         (Client.name.ilike(f"%{src}%")),
+                         (Client.address.ilike(f"%{src}%")),
+                     ))
                      )
             query_count = (query_count
-                     .filter(Client.name.ilike(f"%{src}%"))
+                        .filter(or_(
+                            (Client.name.ilike(f"%{src}%")),
+                            (Client.address.ilike(f"%{src}%")),
+                        ))
                      )
 
         query = (

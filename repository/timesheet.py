@@ -36,6 +36,79 @@ from schemas.mobile import (
     DetailTimesheet,
 )
 
+async def get_detail_timesheet_today(
+    db:Session,
+    user:User,
+)->DetailTimesheet:
+    try:
+        today_datetime = datetime.now(timezone(TZ)).date()
+        # Create datetime objects for start and end of today
+        day_start = datetime.combine(today_datetime, time.min)
+        day_end = datetime.combine(today_datetime, time.max)
+        
+        # Filter timesheet by clock_in datetime for today
+        query_timesheet = (
+            select(TimeSheet)
+            .filter(TimeSheet.emp_id == user.id)  # Filter by current user
+            .filter(TimeSheet.isact == True)
+            .filter(TimeSheet.clock_in >= day_start)
+            .filter(TimeSheet.clock_in <= day_end)
+            .limit(1)
+        )
+        data_timesheet = db.execute(query_timesheet).scalar_one_or_none()
+        if not data_timesheet:
+            return DetailTimesheet().model_dump()
+        start_time = data_timesheet.clock_in.time()
+        end_time = data_timesheet.clock_out.time()
+        # History data preparation
+        today = data_timesheet.clock_in.date()
+        day_start = datetime.combine(today, time.min)
+        day_end = datetime.combine(today, time.max)
+        
+        # Query attendance data with datetime filter
+        query_data_att = (
+            select(TimeSheet).filter(
+            TimeSheet.emp_id == user.id,
+            TimeSheet.isact == True,
+            TimeSheet.clock_in >= day_start,
+            TimeSheet.clock_in <= day_end
+            )
+            .join(ClientOutlet, TimeSheet.outlet_id == ClientOutlet.id, isouter=True)
+        )
+        query_data_att = query_data_att.order_by(TimeSheet.clock_in.desc())
+
+        data_att = db.execute(
+            query_data_att
+            .limit(100)
+        ).scalars().all()
+        history = []
+        for item in data_att:
+            history.append(
+                HistoryAbsensi(
+                    clock_in=item.clock_in.strftime("%H:%M") if item.clock_in else None,
+                    clock_out=item.clock_out.strftime("%H:%M") if item.clock_out else None,
+                    date=item.clock_in.strftime("%d %B %Y") if item.clock_in else None,
+                    duration=item.total_hours.strftime("%H:%M"),
+                    outlet=DataOutlet(
+                        id=item.outlets.id if item.outlets else None,
+                        name=item.outlets.name if item.outlets else None,
+                        address=item.outlets.address if item.outlets else None,
+                        latitude=item.outlets.latitude if item.outlets else 0.0,
+                        longitude=item.outlets.longitude if item.outlets else 0.0,
+                    )
+                )
+            )
+        return DetailTimesheet(
+            work_type="Shift",
+            work_day=today.strftime("%A"),
+            work_hours=f"{start_time}-{end_time}",
+            work_model="WFO",
+            history=history
+        ).model_dump()
+    except Exception as e:
+        print("Error get detail timesheet: \n", e)
+        raise ValueError("Failed get detail timesheet")
+    
 async def get_detail_timesheet(
     db:Session,
     user:User,

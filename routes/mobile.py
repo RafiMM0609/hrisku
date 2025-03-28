@@ -556,7 +556,6 @@ async def detail_menu_timesheet_route(
     id_timesheet:int,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
-    bulan:Optional[str] = None,
 ):
     '''
     id_timesheet disi dengan id yang ada di list
@@ -566,6 +565,34 @@ async def detail_menu_timesheet_route(
         return Unauthorized()
     try:
         data_shift = await timesheetRepo.get_detail_timesheet(db, user, id_timesheet)
+        return common_response(Ok(
+            message="Success Data Menu Absensi",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/today-detail",
+    responses={
+        "200": {"model": DetailTimesheetResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def detail_menu_timesheet_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    '''
+    semangat bang
+    '''
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await timesheetRepo.get_detail_timesheet_today(db, user)
         return common_response(Ok(
             message="Success Data Menu Absensi",
             data=data_shift,

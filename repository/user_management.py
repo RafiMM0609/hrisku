@@ -100,7 +100,7 @@ async def add_user(
             address=payload.address,
             first_login=password,
             created_by=user.id,
-            photo=payload.photo,
+            photo=photo_url,
             created_at=datetime.now(tz=timezone(TZ)),
         )
         new_user.roles.append(role)

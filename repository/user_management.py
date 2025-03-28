@@ -88,6 +88,11 @@ async def add_user(
             raise ValueError("Role not found")
         password = secrets.token_urlsafe(16)
         # hashed_password = generate_hash_password(password)
+        if payload.photo:
+            photo_path = os.path.join("profile", payload.photo.split("/")[-1])
+            photo_url = await upload_file_from_path_to_minio(photo_path, payload.photo)
+        else:
+            photo_url = None
         new_user = User(
             email=payload.email,
             name=payload.name,

@@ -1,9 +1,12 @@
 import redis
 import os
-
+from settings import (
+REDIS_HOST,
+REDIS_PORT,
+)
 
 # Inisialisasi koneksi Redis
-redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
 # Cek koneksi
 try:

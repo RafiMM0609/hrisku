@@ -4,7 +4,7 @@ from math import ceil
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
+from core.file import upload_file_to_local, delete_file_in_local, generate_link_download, upload_file_from_path_to_minio
 from models.User import User
 from models.Role import Role
 from models.UserRole import UserRole

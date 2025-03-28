@@ -41,8 +41,8 @@ MAIL_SERVER=os.environ.get("MAIL_SERVER", "")
 MAIL_FROM_NAME=os.environ.get("MAIL_SERVER", "")
 
 #Redis
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
-REDIS_PORT = os.getenv('REDIS_PORT', 6379)
+REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+REDIS_PORT = os.environ.get('REDIS_PORT', 6379)
 
 MAIL_TLS=False
 MAIL_SSL=False

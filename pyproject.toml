@@ -6,6 +6,7 @@ authors = ["Mahrus"]
 package-mode = false
 
 [tool.poetry.dependencies]
+redis = "^4.0.2"
 python = ">=3.11,<4.0"
 absl-py = "2.1.0"
 aiomysql = "0.2.0"

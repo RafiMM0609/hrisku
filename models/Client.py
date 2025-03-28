@@ -28,7 +28,7 @@ class Client(Base):
     name = Column(String, nullable=False, index=True)
     brand = Column(String, nullable=True)
     product_service = Column(String, nullable=True)
-    industry = Column(String, nullable=True)
+    npwp = Column(String, nullable=True)
     cs_person = Column(String, nullable=True)
     cs_number = Column(String, nullable=True)
     cs_email = Column(String, nullable=True)

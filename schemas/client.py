@@ -102,7 +102,7 @@ class ListAllClient(BaseModel):
     id_client: int
     name: str
     address: str
-    outlet: List[Organization]
+    outlet: Optional[List[Organization]]=None
 
 
 class ListClientResponse(BaseModel):
@@ -142,11 +142,11 @@ class DetailClient(BaseModel):
     id:str
     photo:Optional[str]=None
     name: str
-    address: str
+    address: Optional[str]=None
     outlet: Optional[List[OutletList]]=None
-    basic_salary: float
-    agency_fee: float
-    payment_date:str = "01-12-2999"
+    basic_salary: Optional[float]=None
+    agency_fee: Optional[float]=None
+    payment_date:Optional[str] = None
     bpjs: Optional[List[EditBpjsRequest]] = None
     allowences: Optional[List[EditAllowencesRequest]] = None
     cs_person: Optional[str] = None

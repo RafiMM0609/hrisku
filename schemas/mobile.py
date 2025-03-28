@@ -128,3 +128,41 @@ class CheckAttendanceResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class DataHeaderTimeSheet(BaseModel):
+    start_shift:Optional[str]=None
+    end_shift:Optional[str]=None
+    total_jam:Optional[int]=None
+class CoCiTimesheet(BaseModel):
+    id:int
+    start_shift:Optional[str]=None
+    end_shift:Optional[str]=None
+    note:Optional[str]=None
+    outlet:Optional[DataOutlet]=None
+class ListTimesheet(BaseModel):
+    date:str
+    coci:CoCiTimesheet
+    total_jam:Optional[int]=None
+class DataMenuTimeSheet(BaseModel):
+    header: Optional[DataHeaderTimeSheet]=None
+    calender: List[str]=['2025-08-01', '2025-08-02', '2025-08-03']
+    activity: Optional[List[ListTimesheet]]=[]
+class DataMenuTimeSheetResponse(BaseModel):
+    meta: MetaResponse
+    data: DataMenuTimeSheet
+    status: str
+    code: int
+    message: str
+
+class DetailTimesheet(BaseModel):
+    work_type: Optional[str]=None
+    work_day: Optional[str]=None
+    work_hours: Optional[str]=None
+    work_model: Optional[str]=None
+    history:Optional[List[HistoryAbsensi]]=[]
+class DetailTimesheetResponse(BaseModel):
+    meta: MetaResponse
+    data: DetailTimesheet
+    status: str
+    code: int
+    message: str

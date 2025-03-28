@@ -19,6 +19,7 @@ class User(Base):
     updated_by = Column(String(36), nullable=False)
     email = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
+    npwp = Column(String, nullable=False)
     photo = Column(String, nullable=True)
     nik = Column(String, nullable=True)
     phone = Column(String, nullable=False)

@@ -22,6 +22,7 @@ from repository import mobile as mobileRepo
 from repository import shift as shiftRepo
 from repository import auth as authRepo
 from repository import izin as izinRepo
+from repository import timesheet as timesheetRepo
 from schemas.mobile import *
 from schemas.shift import *
 from schemas.auth import (
@@ -505,6 +506,66 @@ async def list_izin_option_route(
         return Unauthorized()
     try:
         data_shift = await izinRepo.get_izin_option(db, user, src)
+        return common_response(Ok(
+            message="Success Data Menu Absensi",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.get("/menu-timesheet",
+    responses={
+        "200": {"model": DataIzinResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def data_menu_timesheet_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    bulan:Optional[str] = None,
+):
+    '''
+    kolom bulan bisa diisi dengan date hari pertama bulan terpilih 'yyyy-mm-dd'
+    contoh: 2025-08-01 untuk bulan agustus 2025
+    '''
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await timesheetRepo.get_data_menu_timesheet(db, user, bulan)
+        return common_response(Ok(
+            message="Success Data Menu Absensi",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/menu-timesheet/{id_timesheet}",
+    responses={
+        "200": {"model": DetailTimesheetResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def detail_menu_timesheet_route(
+    id_timesheet:int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    bulan:Optional[str] = None,
+):
+    '''
+    id_timesheet disi dengan id yang ada di list
+    '''
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await timesheetRepo.get_detail_timesheet(db, user, id_timesheet)
         return common_response(Ok(
             message="Success Data Menu Absensi",
             data=data_shift,

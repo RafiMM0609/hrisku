@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile, BackgroundTa
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from models import get_db
-from core.file import preview_file_from_minio, upload_file_to_minio, download_file, upload_file
+from core.file import preview_file_from_minio, upload_file_to_minio, download_file, upload_file, upload_file_to_tmp
 from core.responses import (
     Created,
     Unauthorized,
@@ -38,8 +38,12 @@ async def upload_file_router(
         file_extension = os.path.splitext(file.filename)[1]
         file_name = os.path.splitext(file.filename)[0]
         now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        path = await upload_file(
-        upload_file=file, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
+        #path = await upload_file(
+        #upload_file=file, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
+        #)
+        formated_file_name=f"{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
+        path = upload_file_to_tmp(
+            upload_file=file, filename = formated_file_name
         )
         return common_response(Created(path))
     except Exception as e:

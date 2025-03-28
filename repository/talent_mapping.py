@@ -808,7 +808,7 @@ async def get_contract_history(
             select(User.id).filter(User.id_user == talent_id)
         ).scalar_one_or_none()
         if not emp_id:
-            raise ValueError("Talent not found")
+            return []
         query = select(Contract).filter(Contract.emp_id == emp_id, Contract.isact == True)
         data = db.execute(query).scalars().all()
         if not data:

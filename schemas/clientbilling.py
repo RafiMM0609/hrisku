@@ -63,12 +63,12 @@ class ListDetailKeterangan(BaseModel):
     jumlah: Optional[float]=None
 
 class ListDetailBillingAction(BaseModel):
-    title: str
-    client_id: int
-    client_name: str
-    start_period: str
-    end_period: str
-    detail: List[ListDetailKeterangan]
+    title: Optional[str]=None
+    client_id: Optional[int]=None
+    client_name: Optional[str]=None
+    start_period: Optional[str]=None
+    end_period: Optional[str]=None
+    detail: Optional[List[ListDetailKeterangan]]=[]
 
 class ListDetailBillingActionResponse(BaseModel):
     meta: MetaResponse

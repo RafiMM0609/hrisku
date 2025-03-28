@@ -58,8 +58,8 @@ async def get_detail_timesheet_today(
         data_timesheet = db.execute(query_timesheet).scalar_one_or_none()
         if not data_timesheet:
             return DetailTimesheet().model_dump()
-        start_time = data_timesheet.clock_in.time()
-        end_time = data_timesheet.clock_out.time()
+        start_time = data_timesheet.clock_in.time().strftime("%H:%M") if data_timesheet.clock_in else None
+        end_time = data_timesheet.clock_out.time().strftime("%H:%M") if data_timesheet.clock_out else None
         # History data preparation
         today = data_timesheet.clock_in.date()
         day_start = datetime.combine(today, time.min)
@@ -124,8 +124,8 @@ async def get_detail_timesheet(
         data_timesheet = db.execute(query_timesheet).scalar_one_or_none()
         if not data_timesheet:
             return DetailTimesheet()
-        start_time = data_timesheet.clock_in.time()
-        end_time = data_timesheet.clock_out.time()
+        start_time = data_timesheet.clock_in.time().strftime("%H:%M") if data_timesheet.clock_in else None
+        end_time = data_timesheet.clock_out.time().strftime("%H:%M") if data_timesheet.clock_out else None
         # History data preparation
         today = data_timesheet.clock_in.date()
         day_start = datetime.combine(today, time.min)

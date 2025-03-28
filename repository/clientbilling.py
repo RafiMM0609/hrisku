@@ -33,7 +33,7 @@ async def list_billing_action(
         payment = db.execute(query).scalar_one_or_none()
         
         if not payment:
-            raise ValueError(f"ClientPayment not found")
+            return ListDetailBillingAction().model_dump()
         
         client = payment.clients
         

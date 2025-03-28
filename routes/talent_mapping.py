@@ -293,8 +293,6 @@ async def contract_talent_history_route(
             db=db,
             talent_id=talent_id,
         )
-        if not history:
-            return common_response(BadRequest(message="No contract history found for the given talent ID."))
         return common_response(Ok(
             message="Successfully retrieved contract history.",
             data=history

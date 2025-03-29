@@ -22,6 +22,7 @@ async def get_izin_option(
         query = select(Izin).limit(50)
         if src:
             query = query.filter(Izin.name.ilike(f"%{src}%"))
+        query = query.filter(Izin.is_leave == True)
         izin = db.execute(query).scalars().all()
         return [DataIzin(
             id=i.id,

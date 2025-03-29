@@ -13,6 +13,8 @@ COPY ./.env .
 # Configure poetry to not use a virtual environment since Docker is already isolated
 RUN poetry config virtualenvs.create false
 
+RUN poetry lock
+
 # Install dependencies
 RUN poetry install --without dev --no-interaction
 

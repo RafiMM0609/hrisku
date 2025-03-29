@@ -4,7 +4,7 @@ from math import ceil
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
+from core.file import upload_file_to_local, delete_file_in_local, generate_link_download, upload_file_from_path_to_minio
 from models.User import User
 from models.Role import Role
 from models.UserRole import UserRole
@@ -88,6 +88,11 @@ async def add_user(
             raise ValueError("Role not found")
         password = secrets.token_urlsafe(16)
         # hashed_password = generate_hash_password(password)
+        if payload.photo:
+            photo_path = os.path.join("profile", payload.photo.split("/")[-1])
+            photo_url = await upload_file_from_path_to_minio(photo_path, payload.photo)
+        else:
+            photo_url = None
         new_user = User(
             email=payload.email,
             name=payload.name,
@@ -95,7 +100,7 @@ async def add_user(
             address=payload.address,
             first_login=password,
             created_by=user.id,
-            photo=payload.photo,
+            photo=photo_url,
             created_at=datetime.now(tz=timezone(TZ)),
         )
         new_user.roles.append(role)

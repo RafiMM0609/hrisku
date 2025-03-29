@@ -480,18 +480,18 @@ async def list_absensi_route(
     if not user:
         return Unauthorized()
     try:
-        data_shift = await get_data_with_cache(
-            key=f"absensi-{user.id}-{start}-{end}-{order}",
-            fetch_function=mobileRepo.get_menu_absensi,
-            model=DataMenuAbsensi,
-            db=db, 
-            user=user,
-            src=src, 
-            start=start, 
-            end=end, 
-            order=order
-        )
-        # data_shift = await mobileRepo.get_menu_absensi(db, user,src, start, end, order)
+        # data_shift = await get_data_with_cache(
+        #     key=f"absensi-{user.id}-{start}-{end}-{order}",
+        #     fetch_function=mobileRepo.get_menu_absensi,
+        #     model=DataMenuAbsensi,
+        #     db=db, 
+        #     user=user,
+        #     src=src, 
+        #     start=start, 
+        #     end=end, 
+        #     order=order
+        # )
+        data_shift = await mobileRepo.get_menu_absensi(db, user,src, start, end, order)
         return common_response(Ok(
             message="Success Data Menu Absensi",
             data=data_shift,

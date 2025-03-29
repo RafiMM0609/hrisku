@@ -43,7 +43,8 @@ MAIL_FROM_NAME=os.environ.get("MAIL_SERVER", "")
 # Redis configuration
 # Use environment variable with fallback to service name for Docker
 REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
-REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
+# REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
+REDIS_PORT = 6379
 
 MAIL_TLS=False
 MAIL_SSL=False

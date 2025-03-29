@@ -124,6 +124,29 @@ async def get_talent_timesheet(
             )
             .limit(100)
         )
+        grouped_attendance_query = db.execute(
+            select(
+                Attendance.date,
+            )
+            .where(
+                Attendance.emp_id == user.id,
+                Attendance.isact == True,
+                Attendance.date >= start_date,
+                Attendance.date <= end_date
+            )
+            .group_by(Attendance.date)
+            .limit(100)
+        )
+
+        # Fetch all attendance records grouped by date
+        grouped_attendance_results = grouped_attendance_query.fetchall()
+        
+        # Calculate total attendance count across all days
+        total_attendance_count = sum(1 if result.date else 0 for result in grouped_attendance_results) if grouped_attendance_results else 0
+        
+        # For debugging
+        print("grouped_attendance results: \n", total_attendance_count)
+
         filtered_timesheet = timesheet_query.scalars().all()
 
         timesheet = []
@@ -143,7 +166,7 @@ async def get_talent_timesheet(
         return TalentTimesheet(
             name=user.name,
             role_name=user.roles[0].name if user.roles else None,
-            total_workdays=len(filtered_timesheet),
+            total_workdays=total_attendance_count,  
             timesheet=timesheet
         ).dict()
     except Exception as e:

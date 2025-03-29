@@ -5,18 +5,24 @@ WORKDIR /usr/src/app
 # Install poetry
 RUN pip install poetry
 
-# Copy poetry configuration files
-COPY pyproject.toml poetry.lock* ./
 # Copy .env file
 COPY ./.env .
 
 # Configure poetry to not use a virtual environment since Docker is already isolated
 RUN poetry config virtualenvs.create false
 
+# Copy only pyproject.toml first (not the lock file)
+COPY pyproject.toml ./
+
+# Generate a new lock file
 RUN poetry lock
 
+# Copy the rest of the application code
+COPY . .
+
 # Install dependencies
-RUN poetry install --without dev --no-interaction
+# RUN poetry install --without dev --no-interaction
+RUN poetry install 
 
 EXPOSE 8000
 

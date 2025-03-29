@@ -49,7 +49,7 @@ class TalentInformation(BaseModel):
     address:str
     nik:str
     email:str
-    photo:str
+    photo:Optional[str]=None
 
 class TalentInformationResponse(BaseModel):
     meta: MetaResponse
@@ -165,7 +165,7 @@ class TalentAttendanceResponse(BaseModel):
 
 class TimeSheetHistory(BaseModel):
     date:Optional[str]=None
-    working_hours:int
+    working_hours:Optional[str]=None
     notes:Optional[str]=None
     outlet:Optional[Organization]=None
 

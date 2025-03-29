@@ -127,10 +127,11 @@ async def get_talent_timesheet(
         filtered_timesheet = timesheet_query.scalars().all()
 
         timesheet = []
+        # Format timesheet data
         for history in filtered_timesheet:
             timesheet.append(TimeSheetHistory(
-                date=history.date.strftime("%A, %d %B %Y") if history.date else None,
-                working_hours=history.total_hours,
+                date=history.created_at.date().strftime("%A, %d %B %Y") if history.created_at else None,
+                working_hours=history.total_hours.strftime("%H:%M") if history.total_hours else None,
                 notes=history.note,
                 outlet=Organization(
                     id=history.outlets.id if history.outlets else 0,
@@ -365,7 +366,7 @@ async def formating_talent_information(d:User) -> TalentInformation:
         address=d.address,
         nik=d.nik if d.nik else "",
         email=d.email,
-        photo=generate_link_download(d.photo) if d.photo else ""
+        photo=generate_link_download(d.photo) if d.photo else None
     ).dict()
 
 async def list_talent(

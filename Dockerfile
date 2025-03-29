@@ -1,34 +1,23 @@
 FROM python:3.11.2-slim-buster
+# FROM python:3.10-buster
+# FROM python:3.11-buster
 
 WORKDIR /usr/src/app
 
-# Install poetry
-RUN pip install poetry
-
-# Copy .env file
+# install untuk pdfkit
+# RUN apt-get update && apt-get install -y wkhtmltopdf && rm -rf /var/lib/apt/lists/*
+# RUN pip install deepface tf_keras
+COPY ./requirements.txt .
 COPY ./.env .
-
-# Configure poetry to not use a virtual environment since Docker is already isolated
-RUN poetry config virtualenvs.create false
-
-# Copy only pyproject.toml first (not the lock file)
-COPY pyproject.toml ./
-
-# Generate a new lock file
-RUN poetry lock
-
-# Copy the rest of the application code
-COPY . .
-
-# Install dependencies
-# RUN poetry install --without dev --no-interaction
-RUN poetry install 
+RUN pip install -r requirements.txt
 
 EXPOSE 8000
 
-# Copy the rest of the application code
 COPY . .
 
-# Run the application with poetry
-# CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--loop", "uvloop", "--http", "httptools", "--backlog", "2048", "--reload"]
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "6", "--loop", "uvloop", "--http", "httptools", "--backlog", "2048"]
+# CMD [ "poetry", "run", "uvicorn", "main:app","--host", "0.0.0.0", "--port", "8000", "--reload"]
+# CMD [ "uvicorn", "main:app","--host", "0.0.0.0", "--port", "8000", "--reload" ,"--log-config", "log_conf.json"]
+# CMD [ "uvicorn","main:app","--host","0.0.0.0","--port","8080","--workers", "4","--loop","\"uvloop\"","--http" "\"httptools\"","--backlog","2048"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--loop", "uvloop", "--http", "httptools", "--backlog", "2048", "--reload"]
+# CMD [ "uvicorn","main:app","--host","0.0.0.0","--port","8000","--workers","--loop","\"uvloop\"","--backlog","2048"]
+# uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --loop "uvloop" --http "httptools" --backlog 2048

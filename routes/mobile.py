@@ -583,6 +583,35 @@ async def detail_menu_timesheet_route(
         )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+    
+@router.get("/detail-absensi/{id_attendance}",
+    responses={
+        "200": {"model": DetailDataAbsensiResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def detail_menu_timesheet_route(
+    id_attendance:int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    '''
+    semangat bang
+    '''
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_shift = await timesheetRepo.get_detail_absensi(db, user, id_attendance)
+        return common_response(Ok(
+            message="Success Data Menu Absensi",
+            data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
 
 @router.get("/menu-timesheet/{id_timesheet}",
     responses={

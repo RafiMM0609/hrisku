@@ -98,10 +98,10 @@ class HeaderAbsensi(BaseModel):
     lembur:Optional[int]=0
 
 class HistoryAbsensi(BaseModel):
+    id:int
     date:str = "22 August 2025"
-    clock_in:str
-    clock_out:Optional[str]=None
-    duration:Optional[str] =None
+    time:Optional[str]=None
+    activity:Optional[str] = None
     outlet:DataOutlet
 
 class DataMenuAbsensi(BaseModel):
@@ -161,6 +161,19 @@ class DetailTimesheet(BaseModel):
     work_model: Optional[str]=None
     history:Optional[List[HistoryAbsensi]]=[]
 class DetailTimesheetResponse(BaseModel):
+    meta: MetaResponse
+    data: DetailTimesheet
+    status: str
+    code: int
+    message: str
+
+class DetailDataAbsensi(BaseModel):
+    work_type: Optional[str]=None
+    work_day: Optional[str]=None
+    work_hours: Optional[str]=None
+    work_model: Optional[str]=None
+    history:Optional[List[HistoryAbsensi]]=[]
+class DetailDataAbsensiResponse(BaseModel):
     meta: MetaResponse
     data: DetailTimesheet
     status: str

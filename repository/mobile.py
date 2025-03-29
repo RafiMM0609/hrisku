@@ -28,6 +28,7 @@ from schemas.mobile import (
     HistoryAbsensi,
     HeaderAbsensi,
     CheckAttendance,
+    DetailDataAbsensi,
 )
 
 async def get_status_attendance(
@@ -177,6 +178,7 @@ async def get_menu_absensi(
 
             history.append(
                 HistoryAbsensi(
+                    id=att.id,
                     date=att.date.strftime("%d %B %Y") if att.clock_in else None,
                     clock_in=att.clock_in.strftime("%H:%M") if att.clock_in else None,
                     clock_out=att.clock_out.strftime("%H:%M") if att.clock_out else None,

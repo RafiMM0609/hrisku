@@ -34,6 +34,7 @@ from schemas.mobile import (
     CoCiTimesheet,
     HistoryAbsensi,
     DetailTimesheet,
+    DetailDataAbsensi
 )
 
 async def get_detail_timesheet_today(
@@ -85,10 +86,10 @@ async def get_detail_timesheet_today(
         for item in data_att:
             history.append(
                 HistoryAbsensi(
-                    clock_in=item.clock_in.strftime("%H:%M") if item.clock_in else None,
-                    clock_out=item.clock_out.strftime("%H:%M") if item.clock_out else None,
+                    id=item.id,
                     date=item.clock_in.strftime("%d %B %Y") if item.clock_in else None,
-                    duration=item.total_hours.strftime("%H:%M"),
+                    time=item.clock_in.strftime("%H:%M") if item.clock_in else None,
+                    activity="Clock In",
                     outlet=DataOutlet(
                         id=item.outlets.id if item.outlets else None,
                         name=item.outlets.name if item.outlets else None,
@@ -98,6 +99,23 @@ async def get_detail_timesheet_today(
                     )
                 )
             )
+            # Add clock out as a separate entry if it exists
+            if item.clock_out:
+                history.append(
+                    HistoryAbsensi(
+                        id=item.id,
+                        date=item.clock_in.strftime("%d %B %Y") if item.clock_in else None,
+                        time=item.clock_out.strftime("%H:%M") if item.clock_out else None,
+                        activity="Clock Out",
+                        outlet=DataOutlet(
+                            id=item.outlets.id if item.outlets else None,
+                            name=item.outlets.name if item.outlets else None,
+                            address=item.outlets.address if item.outlets else None,
+                            latitude=item.outlets.latitude if item.outlets else 0.0,
+                            longitude=item.outlets.longitude if item.outlets else 0.0,
+                        )
+                    )
+                )
         return DetailTimesheet(
             work_type="Shift",
             work_day=today.strftime("%A"),
@@ -148,13 +166,14 @@ async def get_detail_timesheet(
             .limit(100)
         ).scalars().all()
         history = []
+        # Formating data for history
         for item in data_att:
             history.append(
                 HistoryAbsensi(
-                    clock_in=item.clock_in.strftime("%H:%M") if item.clock_in else None,
-                    clock_out=item.clock_out.strftime("%H:%M") if item.clock_out else None,
+                    id=item.id,
                     date=item.clock_in.strftime("%d %B %Y") if item.clock_in else None,
-                    duration=item.total_hours.strftime("%H:%M"),
+                    time=item.clock_in.strftime("%H:%M") if item.clock_in else None,
+                    activity="Clock In",
                     outlet=DataOutlet(
                         id=item.outlets.id if item.outlets else None,
                         name=item.outlets.name if item.outlets else None,
@@ -164,6 +183,23 @@ async def get_detail_timesheet(
                     )
                 )
             )
+            # Add clock out as a separate entry if it exists
+            if item.clock_out:
+                history.append(
+                    HistoryAbsensi(
+                        id=item.id,
+                        date=item.clock_in.strftime("%d %B %Y") if item.clock_in else None,
+                        time=item.clock_out.strftime("%H:%M") if item.clock_out else None,
+                        activity="Clock Out",
+                        outlet=DataOutlet(
+                            id=item.outlets.id if item.outlets else None,
+                            name=item.outlets.name if item.outlets else None,
+                            address=item.outlets.address if item.outlets else None,
+                            latitude=item.outlets.latitude if item.outlets else 0.0,
+                            longitude=item.outlets.longitude if item.outlets else 0.0,
+                        )
+                    )
+                )
 
         return DetailTimesheet(
             work_type="Shift",
@@ -175,6 +211,85 @@ async def get_detail_timesheet(
     except Exception as e:
         print("Error get detail timesheet: \n", e)
         raise ValueError("Failed get detail timesheet")
+    
+async def get_detail_absensi(
+    db:Session,
+    user:User,
+    id_attendance:int,
+)->DetailDataAbsensi:
+    try:
+        query_attendance = (
+            select(Attendance)
+            .filter(Attendance.id==id_attendance)
+            .filter(Attendance.isact==True)
+            .limit(1)
+        )
+        data_attendance = db.execute(query_attendance).scalar_one_or_none()
+        if not data_attendance:
+            return DetailDataAbsensi().model_dump()
+            
+        # Format times for display
+        start_time = data_attendance.clock_in.strftime("%H:%M") if data_attendance.clock_in else None
+        end_time = data_attendance.clock_out.strftime("%H:%M") if data_attendance.clock_out else None
+        
+        # History data preparation - only include the requested attendance record
+        today = data_attendance.date
+        
+        history = []
+        # Add clock in entry
+        if data_attendance.clock_in:
+            history.append(
+                HistoryAbsensi(
+                    id=data_attendance.id,
+                    date=data_attendance.date.strftime("%d %B %Y") if data_attendance.date else None,
+                    time=data_attendance.clock_in.strftime("%H:%M") if data_attendance.clock_in else None,
+                    activity="Clock In",
+                    outlet=DataOutlet(
+                        id=data_attendance.outlets.id if data_attendance.outlets else None,
+                        name=data_attendance.outlets.name if data_attendance.outlets else None,
+                        address=data_attendance.outlets.address if data_attendance.outlets else None,
+                        latitude=data_attendance.outlets.latitude if data_attendance.outlets else 0.0,
+                        longitude=data_attendance.outlets.longitude if data_attendance.outlets else 0.0,
+                    )
+                )
+            )
+        
+        # Add clock out entry if it exists
+        if data_attendance.clock_out:
+            history.append(
+                HistoryAbsensi(
+                    id=data_attendance.id,
+                    date=data_attendance.date.strftime("%d %B %Y") if data_attendance.date else None,
+                    time=data_attendance.clock_out.strftime("%H:%M") if data_attendance.clock_out else None,
+                    activity="Clock Out",
+                    outlet=DataOutlet(
+                        id=data_attendance.outlets.id if data_attendance.outlets else None,
+                        name=data_attendance.outlets.name if data_attendance.outlets else None,
+                        address=data_attendance.outlets.address if data_attendance.outlets else None,
+                        latitude=data_attendance.outlets.latitude if data_attendance.outlets else 0.0,
+                        longitude=data_attendance.outlets.longitude if data_attendance.outlets else 0.0,
+                    )
+                )
+            )
+
+        # Determine work type based on attendance status
+        work_type = "Shift"
+        # if data_attendance.status:
+        #     if "Lembur" in data_attendance.status:
+        #         work_type = "Overtime"
+        #     elif data_attendance.status in ["Sakit", "Cuti", "Izin"]:
+        #         work_type = data_attendance.status
+
+        return DetailDataAbsensi(
+            work_type=work_type,
+            work_day=today.strftime("%A"),
+            work_hours=f"{start_time}-{end_time}" if start_time and end_time else None,
+            work_model="WFO",  # Default to WFO as there's no field indicating work model
+            history=history
+        ).model_dump()
+    except Exception as e:
+        print("Error get detail absensi: \n", e)
+        raise ValueError("Failed get detail absensi")
 
 async def get_data_menu_timesheet(
     db:Session,
@@ -447,33 +562,41 @@ async def get_menu_absensi(
                 select(ClientOutlet).filter(ClientOutlet.id == att.loc_id)
             ).scalar_one_or_none()
 
-            # Calculate duration
-            if att.clock_in and att.clock_out:
-                # Combine clock_in and clock_out with a date to calculate the duration
-                clock_in_datetime = datetime.combine(att.date, att.clock_in)
-                clock_out_datetime = datetime.combine(att.date, att.clock_out)
-                duration_seconds = (clock_out_datetime - clock_in_datetime).total_seconds()
-                hours = int(duration_seconds // 3600)
-                minutes = int((duration_seconds % 3600) // 60)
-                duration = f"{hours} jam {minutes} menit"
-            else:
-                duration = None
-
-            history.append(
-                HistoryAbsensi(
-                    date=att.date.strftime("%d %B %Y") if att.clock_in else None,
-                    clock_in=att.clock_in.strftime("%H:%M") if att.clock_in else None,
-                    clock_out=att.clock_out.strftime("%H:%M") if att.clock_out else None,
-                    outlet=DataOutlet(
-                        id=outlet.id if outlet else None,
-                        name=outlet.name if outlet else None,
-                        address=outlet.address if outlet else None,
-                        latitude=outlet.latitude if outlet else 0.0,
-                        longitude=outlet.longitude if outlet else 0.0,
-                    ),
-                    duration=duration
+            # Add Clock In entry
+            if att.clock_in:
+                history.append(
+                    HistoryAbsensi(
+                        id=att.id,
+                        date=att.date.strftime("%d %B %Y"),
+                        time=att.clock_in.strftime("%H:%M"),
+                        activity="Clock In",
+                        outlet=DataOutlet(
+                            id=outlet.id if outlet else None,
+                            name=outlet.name if outlet else None,
+                            address=outlet.address if outlet else None,
+                            latitude=outlet.latitude if outlet else 0.0,
+                            longitude=outlet.longitude if outlet else 0.0,
+                        )
+                    )
                 )
-            )
+            
+            # Add Clock Out entry if exists
+            if att.clock_out:
+                history.append(
+                    HistoryAbsensi(
+                        id=att.id,
+                        date=att.date.strftime("%d %B %Y"),
+                        time=att.clock_out.strftime("%H:%M"),
+                        activity="Clock Out",
+                        outlet=DataOutlet(
+                            id=outlet.id if outlet else None,
+                            name=outlet.name if outlet else None,
+                            address=outlet.address if outlet else None,
+                            latitude=outlet.latitude if outlet else 0.0,
+                            longitude=outlet.longitude if outlet else 0.0,
+                        )
+                    )
+                )
 
         return DataMenuAbsensi(
             this_month=today.strftime("%B %Y"),

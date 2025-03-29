@@ -43,7 +43,7 @@ async def send_reset_password_email(email_to: str, body: BodyResetPassword):
     template_name = "reset-password.html"
     body = {
         "email": body["email"],
-        "target": FE_DOMAIN + "/auth/new-password?token=" + body["token"],
+        "token": body["token"],
     }
     message = MessageSchema(
         subject=subject,

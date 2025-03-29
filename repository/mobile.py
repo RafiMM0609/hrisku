@@ -93,6 +93,7 @@ async def get_menu_absensi(
             Attendance.date.between(start_date, end_date)
             )
             .join(ClientOutlet, Attendance.loc_id == ClientOutlet.id, isouter=True)
+            .group_by(Attendance.date, Attendance.id)  # Group by date and ID to ensure unique entries
         )
         if src:
             query_data_att = query_data_att.filter(
@@ -101,9 +102,9 @@ async def get_menu_absensi(
                 )
             )
         if order == "asc":
-            query_data_att = query_data_att.order_by(Attendance.date.asc())
+            query_data_att = query_data_att.order_by(Attendance.created_at.asc())
         elif order == "desc":
-            query_data_att = query_data_att.order_by(Attendance.date.desc())
+            query_data_att = query_data_att.order_by(Attendance.created_at.desc())
 
         data_att = db.execute(
             query_data_att
@@ -117,6 +118,7 @@ async def get_menu_absensi(
             history=[]
             ).dict()
         
+        # Execute query grouped data
         grouped_data = db.execute(
             select(
                 Attendance.date,

@@ -621,6 +621,21 @@ async def edit_schedule(client_id, emp_id, shift:List[ShiftEdit], workdays, user
     try:
         for d in shift:
             if d.id_shift == None:
+                # Check if sfhit in the same day exist
+                query_check = (
+                    select(ShiftSchedule.id)
+                    .filter(ShiftSchedule.isact==True)
+                    .filter(ShiftSchedule.emp_id==emp_id)
+                    .filter(ShiftSchedule.day==d.day)
+                    .limit(1)
+                )
+                exist_shift_same_day = db.execute(
+                    query_check
+                ).scalar()
+                if exist_shift_same_day:
+                    print("You have inputed the same day shift")
+                    continue  # Skip creating a new shift for this day
+                # Create a new shift schedule
                 new_shift= ShiftSchedule(
                     emp_id=emp_id,
                     client_id=client_id,

@@ -12,6 +12,7 @@ from sqlalchemy.orm import relationship
 from models import Base
 from models.UserRole import UserRole
 from models.RolePermission import RolePermission
+from models.StatusPayment import StatusPayment
 
 
 class ClientPayment(Base):
@@ -21,7 +22,7 @@ class ClientPayment(Base):
     client_id = Column(Integer, ForeignKey("client.id"), nullable=False, index=True)
     amount = Column(Float, nullable=True)
     date = Column(Date, nullable=True)
-    status = Column(Integer, nullable=True)
+    status = Column(Integer, ForeignKey("master_status_payment.id"), nullable=True)
     # created_by = Column(ForeignKey("user.id"), nullable=True)
     # updated_by = Column(ForeignKey("user.id"), nullable=True)
     # created_at = Column(DateTime(timezone=True))
@@ -30,3 +31,4 @@ class ClientPayment(Base):
 
     # Many to One
     clients = relationship("Client", back_populates="client_payments", foreign_keys=[client_id])
+    status_payment = relationship("StatusPayment", back_populates="payments", foreign_keys=[status])

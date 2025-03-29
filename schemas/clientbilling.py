@@ -3,8 +3,8 @@ from pydantic import BaseModel
 import re
 
 class Organization(BaseModel):
-    id:int
-    name:str
+    id:Optional[int]=None
+    name:Optional[str]=None
 
 class Outlet(BaseModel):
     name:str

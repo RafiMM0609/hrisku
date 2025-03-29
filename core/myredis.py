@@ -3,14 +3,14 @@ from pydantic import BaseModel
 from settings import REDIS_HOST, REDIS_PORT
 
 # Inisialisasi koneksi Redis
-redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=1)
 
 # Cek koneksi
 try:
     redis_client.ping()
-    print("Connected to Redis")
+    print(f"Connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
 except redis.ConnectionError:
-    print("Failed to connect to Redis")
+    print(f"Failed to connect to Redis at {REDIS_HOST}:{REDIS_PORT}")
 
 class MenuData(BaseModel):
     id: int
@@ -18,7 +18,7 @@ class MenuData(BaseModel):
     description: str
     price: float
 
-def get_data_with_cache(key: str, fetch_function, model: BaseModel, ttl: int = 60, *args, **kwargs):
+async def get_data_with_cache(key: str, fetch_function, model: BaseModel, ttl: int = 30, *args, **kwargs):
     """
     Mengambil data dari cache, jika tidak ada di cache, ambil dari sumber utama dan simpan di cache.
 
@@ -33,16 +33,16 @@ def get_data_with_cache(key: str, fetch_function, model: BaseModel, ttl: int = 6
     # Periksa cache
     data = redis_client.get(key)
     if data:
-        return model.parse_raw(data)  # Kembalikan data dari cache sebagai Pydantic model
+        return model.parse_raw(data).model_dump()  # Kembalikan data dari cache sebagai Pydantic model
     
     # Ambil data dari sumber utama
-    data = fetch_function(*args, **kwargs)
-    
+    data = await fetch_function(*args, **kwargs)
+
     # Validasi dan simpan di cache dengan TTL
     validated_data = model.parse_obj(data)
     redis_client.set(key, validated_data.json(), ex=ttl)
     
-    return validated_data
+    return validated_data.model_dump()
 
 def fetch_from_db(menu_id):
     """

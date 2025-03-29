@@ -253,8 +253,9 @@ async def list_detail_cb(
                 client_id=item.client_id,
                 amount=item.amount,
                 total_talent= len(item.clients.user_client) if hasattr(item, 'clients') else 0,
-                status=Organization(id=item.status_id if hasattr(item, 'status_id') else 0, 
-                                   name="dummy"),
+                status=Organization(
+                    id=item.status_id if hasattr(item, 'status_id') else 0, 
+                    name=item.status_payment.name if item.status_payment else None),
                 evidence_payment=generate_link_download(item.evidence_payment) if hasattr(item, 'evidence_payment') else "",
                 verify=item.status_id == 1 if hasattr(item, 'status_id') else False
             ).model_dump())

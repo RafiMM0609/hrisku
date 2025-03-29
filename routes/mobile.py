@@ -15,6 +15,7 @@ from core.responses import (
     common_response,
     Ok,
 )
+from core.myredis import get_data_with_cache
 from datetime import datetime
 from core.security import get_user_from_jwt_token, oauth2_scheme, generate_jwt_token_from_user
 from schemas.common import NoContentResponse, InternalServerErrorResponse, UnauthorizedResponse, BadRequestResponse, CudResponschema
@@ -479,7 +480,18 @@ async def list_absensi_route(
     if not user:
         return Unauthorized()
     try:
-        data_shift = await mobileRepo.get_menu_absensi(db, user,src, start, end, order)
+        data_shift = await get_data_with_cache(
+            key=f"absensi-{user.id}-{start}-{end}-{order}",
+            fetch_function=mobileRepo.get_menu_absensi,
+            model=DataMenuAbsensi,
+            db=db, 
+            user=user,
+            src=src, 
+            start=start, 
+            end=end, 
+            order=order
+        )
+        # data_shift = await mobileRepo.get_menu_absensi(db, user,src, start, end, order)
         return common_response(Ok(
             message="Success Data Menu Absensi",
             data=data_shift,

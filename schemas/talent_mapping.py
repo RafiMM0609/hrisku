@@ -91,9 +91,9 @@ class DetailTalentMapping(BaseModel):
     name:str
     dob:Optional[str]=None
     nik:Optional[str]=None
-    email:str
-    phone:str
-    address:str
+    email:Optional[str]=None
+    phone:Optional[str]=None
+    address:Optional[str]=None
     client:Optional[Organization]=None
     outlet:Optional[Organization]=None
     workdays:Optional[int]=None

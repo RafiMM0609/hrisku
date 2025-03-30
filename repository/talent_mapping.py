@@ -519,11 +519,16 @@ async def edit_talent(
     role_id: int = 1,
 ):
     try:
+        #  Data preparation
         user_exist=db.execute(
             select(User)
             .filter(User.id_user==id_user)
             .limit(1)
         ).scalar()
+
+        # Old email
+        old_email = user_exist.email
+
         user_exist.photo=payload.photo
         user_exist.name=payload.name
         user_exist.birth_date=datetime.strptime(payload.dob, "%d-%m-%Y").date()
@@ -550,10 +555,24 @@ async def edit_talent(
             )
         if payload.contract:
             background_tasks.add_task(
-                edit_contract,
+                edit_contract,  
                 user.id,
                 user_exist.id,
                 payload.contract,
+            )
+
+        # new email
+        new_email = user_exist.email
+
+        # Check if change email and first password still exist
+
+        if old_email != new_email and user_exist.first_login != None:
+            await send_first_password_email(
+                email_to=user_exist.email,
+                body={
+                    "email": user_exist.email,
+                    "password": user_exist.first_login
+                    }
             )
     except Exception as e:
         print("Error regis talent : \n", e)

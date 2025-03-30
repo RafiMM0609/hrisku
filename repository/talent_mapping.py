@@ -4,7 +4,7 @@ from math import ceil
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
+from core.file import upload_file_to_local, upload_file_from_path_to_minio, generate_link_download
 from core.mail import send_first_password_email
 from models.User import User
 from models.Role import Role
@@ -319,12 +319,19 @@ async def add_talent(
     role_id: int = 1,
 ):
     try:
+        # If change photo
+        if payload.photo:
+            photo_path = os.path.join("profile", payload.photo.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
+            print(photo_path)
+        else:
+            photo_path = None
         role = db.execute(
             select(Role)
             .filter(Role.id==role_id)).scalar()
         password = secrets.token_urlsafe(16)
         new_user = User(
-            photo=payload.photo,
+            photo=photo_path,
             name=payload.name,
             birth_date=datetime.strptime(payload.dob, "%d-%m-%Y").date(),
             nik=payload.nik,
@@ -519,6 +526,14 @@ async def edit_talent(
     role_id: int = 1,
 ):
     try:
+        # If changing photo
+        if payload.photo:
+            photo_path = os.path.join("profile", payload.photo.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
+            print(photo_path)
+        else:
+            photo_path = None
+
         #  Data preparation
         user_exist=db.execute(
             select(User)
@@ -529,7 +544,7 @@ async def edit_talent(
         # Old email
         old_email = user_exist.email
 
-        user_exist.photo=payload.photo
+        user_exist.photo=photo_path
         user_exist.name=payload.name
         user_exist.birth_date=datetime.strptime(payload.dob, "%d-%m-%Y").date()
         user_exist.nik=payload.nik

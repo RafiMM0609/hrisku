@@ -25,7 +25,7 @@ from schemas.mobile import (
     Organization,
     DataMenuCheckout,
     DataMenuAbsensi,
-    HistoryAbsensi,
+    HistoryAbsensi_Menuabsensi,
     HeaderAbsensi,
     CheckAttendance,
     DetailDataAbsensi,
@@ -177,7 +177,7 @@ async def get_menu_absensi(
                 duration = None
 
             history.append(
-                HistoryAbsensi(
+                HistoryAbsensi_Menuabsensi(
                     id=att.id,
                     date=att.date.strftime("%d %B %Y") if att.clock_in else None,
                     clock_in=att.clock_in.strftime("%H:%M") if att.clock_in else None,

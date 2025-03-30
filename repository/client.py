@@ -4,7 +4,7 @@ import secrets
 from sqlalchemy import select, func, distinct, update, or_
 from sqlalchemy.orm import Session, joinedload, subqueryload 
 from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
+from core.file import upload_file_to_local, upload_file_from_path_to_minio, generate_link_download
 from models.Role import Role
 from models.Module import Module
 from models.Client import Client
@@ -99,9 +99,16 @@ async def add_client(
     background_tasks:any,
 )->Client:
     try:
+        # if change photo
+        if payload.photo:
+            photo_path = os.path.join("client", payload.photo.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
+            print(photo_path)
+        else:
+            photo_path = None
         due_date_payment = datetime.strptime(payload.payment_date, "%d-%m-%Y").date()
         new_client = Client(
-            photo=payload.photo,
+            photo=photo_path,
             name=payload.name,
             address=payload.address,
             fee_agency=payload.agency_fee,
@@ -269,11 +276,18 @@ async def edit_client(
     client_id:str,
 )->Client:
     try:
+        # If changes photo
+        if payload.photo:
+            photo_path = os.path.join("client", payload.photo.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
+            print(photo_path)
+        else:
+            photo_path = None
         client = db.execute(select(Client).filter(Client.id_client == client_id)).scalar()
         if not client:
             raise ValueError("Client not found")
         due_date_payment = datetime.strptime(payload.payment_date, "%d-%m-%Y").date()
-        client.photo = payload.photo
+        client.photo = photo_path
         client.name = payload.name
         client.address = payload.address
         client.fee_agency = payload.agency_fee

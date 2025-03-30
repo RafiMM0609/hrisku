@@ -90,9 +90,10 @@ async def add_user(
         # hashed_password = generate_hash_password(password)
         if payload.photo:
             photo_path = os.path.join("profile", payload.photo.split("/")[-1])
-            photo_url = await upload_file_from_path_to_minio(photo_path, payload.photo)
+            photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
+            print(photo_path)
         else:
-            photo_url = None
+            photo_path = None
         new_user = User(
             email=payload.email,
             name=payload.name,
@@ -100,7 +101,7 @@ async def add_user(
             address=payload.address,
             first_login=password,
             created_by=user.id,
-            photo=photo_url,
+            photo=photo_path,
             created_at=datetime.now(tz=timezone(TZ)),
         )
         new_user.roles.append(role)
@@ -116,6 +117,7 @@ async def add_user(
         db.commit()
         return new_user
     except Exception as e:
+        print("Error add user : \n", e)
         db.rollback()
         db.execute(
             (
@@ -125,7 +127,6 @@ async def add_user(
             )
         )
         db.commit()
-        print("Error add user : \n", e)
         raise ValueError("Failed add user")
     
 async def create_custom_id(
@@ -214,11 +215,18 @@ async def edit_user(
                 raise ValueError("Role not found")
             user_exist.roles.clear()
             user_exist.roles.append(role)
+        # If changes photo
+        if payload.photo:
+            photo_path = os.path.join("profile", payload.photo.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
+            print(photo_path)
+        else:
+            photo_path = None
         user_exist.name = payload.name
         user_exist.email = payload.email
         user_exist.phone = payload.phone
         user_exist.address = payload.address
-        user_exist.photo = payload.photo
+        user_exist.photo = photo_path
         user_exist.updated_by = user.id
         db.add(user_exist)
         db.commit()

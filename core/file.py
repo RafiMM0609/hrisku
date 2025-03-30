@@ -154,7 +154,11 @@ def is_file_exists_in_minio(bucket: str, filepath: str) -> bool:
         return False
 
 
-def upload_file_from_path_to_minio(bucket: str, local_path: str, minio_path: str):
+def upload_file_from_path_to_minio(
+        local_path: str, 
+        minio_path: str,
+        bucket: Optional[str]=MINIO_BUCKET, 
+        ):
     found = minio_client.bucket_exists(bucket_name=bucket)
     if not found:
         minio_client.make_bucket(bucket_name=bucket)

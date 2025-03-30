@@ -104,10 +104,17 @@ class HistoryAbsensi(BaseModel):
     activity:Optional[str] = None
     outlet:DataOutlet
 
+class HistoryAbsensi_Menuabsensi(BaseModel):
+    date:str = "22 August 2025"
+    clock_in:str
+    clock_out:Optional[str]=None
+    duration:Optional[str] =None
+    outlet:DataOutlet
+
 class DataMenuAbsensi(BaseModel):
     this_month:str = "August 2025"
     header:HeaderAbsensi
-    history:Optional[List[HistoryAbsensi]]=[]
+    history:Optional[List[HistoryAbsensi_Menuabsensi]]=[]
 
 class DataMenuAbsensiResponse(BaseModel):
     meta: MetaResponse

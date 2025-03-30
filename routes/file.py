@@ -42,7 +42,7 @@ async def upload_file_router(
         #upload_file=file, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
         #)
         formated_file_name=f"{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
-        path = upload_file_to_tmp(
+        path = await upload_file_to_tmp(
             upload_file=file, filename = formated_file_name
         )
         return common_response(Created(path))

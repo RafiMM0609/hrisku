@@ -132,7 +132,7 @@ async def regis_face(
         file_name = os.path.splitext(upload_file_request.filename)[0]
         now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         path = await upload_file(
-        upload_file=upload_file_request, path=f"/tmp/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
+        upload_file=upload_file_request, path=f"/face/{str(file_name).replace(' ','_')}-{user.name}{now.replace(' ','_')}{file_extension}"
         )
         user.face_id = path
         db.add(user)

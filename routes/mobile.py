@@ -15,7 +15,7 @@ from core.responses import (
     common_response,
     Ok,
 )
-from core.myredis import get_data_with_cache
+# from core.myredis import get_data_with_cache
 from datetime import datetime
 from core.security import get_user_from_jwt_token, oauth2_scheme, generate_jwt_token_from_user
 from schemas.common import NoContentResponse, InternalServerErrorResponse, UnauthorizedResponse, BadRequestResponse, CudResponschema

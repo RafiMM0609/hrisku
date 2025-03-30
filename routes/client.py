@@ -238,7 +238,7 @@ async def detail_route(
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def detail_route(
+async def detail_detail_route(
     id:str,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)

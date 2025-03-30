@@ -23,12 +23,12 @@ class OutletList(BaseModel):
     # cs_phone:str
 
 class PayrollClient(BaseModel):
-    basic_salary:float
-    agency_fee:float
-    allowance:float
-    total_deduction:float
-    nett_payment:float
-    due_date:str   
+    basic_salary:Optional[float]=None
+    agency_fee:Optional[float]=None
+    allowance:Optional[float]=None
+    total_deduction:Optional[float]=None
+    nett_payment:Optional[float]=None
+    due_date:Optional[str]=None
 
 class OutletEdit(BaseModel):
     id_outlet:Optional[str]=None
@@ -164,16 +164,16 @@ class EditOutletRequest(BaseModel):
     name:Optional[str]=None
     total_active:Optional[str]=None
     address:Optional[str]=None
-    latitude:Optional[float]
-    longitude:Optional[float]
+    latitude:Optional[float]=None
+    longitude:Optional[float]=None
 
 class DataDetailClientSignature(BaseModel):
     name:str
-    address:str
+    address:Optional[str]=None
     id_client:str
     outlet:List[OutletList]
-    payroll:PayrollClient
-    total_active:int
+    payroll:Optional[PayrollClient]=None
+    total_active:Optional[int]=0
     manager_signature:Optional[str] = None
     technical_signature:Optional[str] = None
     cs_person: Optional[str] = None

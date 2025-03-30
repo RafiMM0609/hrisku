@@ -20,11 +20,6 @@ from schemas.user_management import AddUserRequest
 import os
 import asyncio
 
-
-from sqlalchemy import select, func, distinct
-from sqlalchemy.orm import Session
-from math import ceil
-
 async def role_option(
     db:Session,
     src:Optional[str] = None

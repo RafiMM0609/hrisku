@@ -47,7 +47,7 @@ async def get_status_attendance(
                 ShiftSchedule.day == today_name,
                 ShiftSchedule.isact == True
             ).limit(1)
-        ).scalar_one_or_none()
+        ).scalar()
 
         # Determine if current time is past shift end time
         past_shift_end = False
@@ -66,7 +66,7 @@ async def get_status_attendance(
                 Attendance.clock_out == None,
             )
 
-        data_attendance = db.execute(attendance_query).scalar_one_or_none()
+        data_attendance = db.execute(attendance_query).scalar()
 
         if not data_attendance:
             return CheckAttendance(
@@ -87,7 +87,7 @@ async def get_status_attendance(
         ).dict()
     except Exception as e:
         print("Error get status attendance: \n", e)
-        raise ValueError("Failed get status attendance")
+        raise ValueError("Failed get status attendance: \n",e)
 
 async def get_menu_absensi(
     db: Session,

@@ -52,7 +52,7 @@ async def get_status_attendance(
         # Determine if current time is past shift end time
         past_shift_end = False
         if shift and shift.time_end:
-            shift_end_time = datetime.combine(today, shift.time_end)
+            shift_end_time = datetime.combine(today, shift.time_end).replace(tzinfo=timezone(TZ))
             past_shift_end = now > shift_end_time
 
         # Adjust the filter for clock_out based on shift end time
@@ -87,7 +87,7 @@ async def get_status_attendance(
         ).dict()
     except Exception as e:
         print("Error get status attendance: \n", e)
-        raise ValueError("Failed get status attendance: \n",e)
+        raise ValueError("Failed get status attendance: \n", e)
 
 async def get_menu_absensi(
     db: Session,

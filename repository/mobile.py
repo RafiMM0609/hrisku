@@ -34,24 +34,48 @@ from schemas.mobile import (
 async def get_status_attendance(
   db: Session,
   user: User,      
-)->CheckAttendance:
+) -> CheckAttendance:
     try:
         today = datetime.now(timezone(TZ)).date()
-        data_attendance = db.execute(
-            select(Attendance).filter(
-                Attendance.emp_id == user.id,
-                Attendance.isact == True,
-                Attendance.date == today,
+        now = datetime.now(timezone(TZ))
+
+        # Fetch today's shift schedule for the user
+        today_name = now.strftime("%A")  # Get day name like "Monday", "Tuesday", etc.
+        shift = db.execute(
+            select(ShiftSchedule).filter(
+                ShiftSchedule.emp_id == user.id,
+                ShiftSchedule.day == today_name,
+                ShiftSchedule.isact == True
+            ).limit(1)
+        ).scalar_one_or_none()
+
+        # Determine if current time is past shift end time
+        past_shift_end = False
+        if shift and shift.time_end:
+            shift_end_time = datetime.combine(today, shift.time_end)
+            past_shift_end = now > shift_end_time
+
+        # Adjust the filter for clock_out based on shift end time
+        attendance_query = select(Attendance).filter(
+            Attendance.emp_id == user.id,
+            Attendance.isact == True,
+            Attendance.date == today,
+        )
+        if not past_shift_end:
+            attendance_query = attendance_query.filter(
                 Attendance.clock_out == None,
             )
-        ).scalar_one_or_none()
+
+        data_attendance = db.execute(attendance_query).scalar_one_or_none()
+
         if not data_attendance:
             return CheckAttendance(
-            clock_in=None,
-            clock_out=None,
-            outlet=Organization(id=None, name=None),
-            date=None
+                clock_in=None,
+                clock_out=None,
+                outlet=Organization(id=None, name=None),
+                date=None
             ).dict()
+
         return CheckAttendance(
             clock_in=data_attendance.clock_in.strftime("%H:%M") if data_attendance.clock_in else None,
             clock_out=data_attendance.clock_out.strftime("%H:%M") if data_attendance.clock_out else None,

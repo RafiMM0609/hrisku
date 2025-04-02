@@ -105,6 +105,7 @@ class HistoryAbsensi(BaseModel):
     outlet:DataOutlet
 
 class HistoryAbsensi_Menuabsensi(BaseModel):
+    id: int
     date:str = "22 August 2025"
     clock_in:str
     clock_out:Optional[str]=None

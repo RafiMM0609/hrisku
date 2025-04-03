@@ -8,6 +8,7 @@ from core.file import upload_file_to_local, upload_file_from_path_to_minio, gene
 from models.Role import Role
 from models.Module import Module
 from models.Client import Client
+from models.Tax import Tax
 from models.User import User
 from models.ClientOutlet import ClientOutlet
 from models.Bpjs import Bpjs
@@ -123,9 +124,6 @@ async def add_client(
         db.commit()
         db.refresh(new_client)
         exist_client_id = new_client.id
-        # new_client.id_client = await create_custom_id(new_client.id)
-        # db.merge(new_client)
-        # db.commit()
         db.execute(
         update(Client).where(Client.id == new_client.id).values(id_client=await create_custom_id(new_client.id))
         )
@@ -155,7 +153,23 @@ async def add_client(
                     amount = data.amount
                 )
                 ls_allowances.append(new_allowances)
-        # with Session(engine) as session:
+        data_tax = {
+            "id_client": new_client.id, 
+            "user_id": user.id
+        }
+        background_tasks.add_task(
+            add_tax_ppn,
+            **data_tax
+        )
+        data_tax_pph = {
+            "id_client": new_client.id, 
+            "user_id": user.id, 
+            "basic_salary": payload.basic_salary
+        }
+        background_tasks.add_task(
+        add_tax_pph,
+        **data_tax_pph
+        )
         db.bulk_save_objects(ls_bpjs)
         db.bulk_save_objects(ls_allowances)
         db.bulk_save_objects(ls_outlet)
@@ -202,6 +216,84 @@ async def add_outlet(outlets:List[ClientOutlet], id_client):
     except Exception as e:
         db.rollback()
         print(f"Error in background add outlets task: {e}")
+    finally:
+        db.close()
+
+async def add_tax_ppn(id_client, user_id):
+    db = SessionLocal()
+    try:
+        # Data preparation
+        year_now = int(datetime.now(tz=timezone(TZ)).year)
+        tax_name = "PPN"
+        tax_percent = 12
+        # Check if tax already exist
+        exist_tax = db.execute(
+            select(Tax)
+            .filter(
+                Tax.client_id == id_client,
+                Tax.isact == True,
+                Tax.year == year_now,
+                Tax.name == tax_name,
+                )
+        ).scalar()
+        if not exist_tax:
+            new_tax = Tax(
+                client_id = id_client,
+                created_by = user_id,
+                name = tax_name,
+                percent = tax_percent,
+                year = year_now,
+            )
+            db.add(new_tax)
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error in background add tax: {e}")
+    finally:
+        db.close()
+
+async def add_tax_pph(id_client, user_id, basic_salary):
+    db = SessionLocal()
+    try:
+        # Data preparation
+        year_now = int(datetime.now(tz=timezone(TZ)).year)
+        tax_name = "PPH"
+
+        # Determine tax_percent based on basic_salary
+        if (basic_salary*12 <= 60000000):  # Up to 60 million
+            tax_percent = 5
+        elif (basic_salary*12 <= 250000000):  # 60 million to 250 million
+            tax_percent = 15
+        elif (basic_salary*12 <= 500000000):  # 250 million to 500 million
+            tax_percent = 25
+        elif (basic_salary*12 <= 5000000000):  # 500 million to 5 billion
+            tax_percent = 30
+        else:  # Above 5 billion
+            tax_percent = 0
+
+        # Check if tax already exist
+        exist_tax = db.execute(
+            select(Tax)
+            .filter(
+                Tax.client_id == id_client,
+                Tax.isact == True,
+                Tax.year == year_now,
+                Tax.name == tax_name,
+            )
+        ).scalar()
+        if not exist_tax:
+            new_tax = Tax(
+                client_id=id_client,
+                created_by=user_id,
+                name=tax_name,
+                percent=tax_percent,
+                year=year_now,
+            )
+            db.add(new_tax)
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error in background add tax: {e}")
     finally:
         db.close()
 
@@ -316,9 +408,23 @@ async def edit_client(
                 payload.allowences,
                 client.id,
             )
-        # db.bulk_save_objects(ls_bpjs)
-        # db.bulk_save_objects(ls_allowances)
-        # db.commit()    
+        data_tax = {
+            "id_client": client.id, 
+            "user_id": user.id
+        }
+        background_tasks.add_task(
+            add_tax_ppn,
+            **data_tax
+        )
+        data_tax_pph = {
+            "id_client": client.id, 
+            "user_id": user.id, 
+            "basic_salary": payload.basic_salary
+        }
+        background_tasks.add_task(
+        add_tax_pph,
+        **data_tax_pph
+        )
         return "oke"
     except Exception as e:
         db.rollback()
@@ -446,6 +552,7 @@ async def list_client(
     src:Optional[str]=None,
     page:Optional[int]=1,
     page_size:Optional[int]=10,
+    user:Optional[User]=None,
 ):
     try:        
         limit = page_size
@@ -459,6 +566,12 @@ async def list_client(
             select(func.count(Client.id))
             .filter(Client.isact==True)
         )
+
+        # Admin hanya client dia aj
+        if user:
+            if user.roles[0].id==2:
+                query = query.filter(Client.id == user.client_id)
+                query_count = query_count.filter(Client.id == user.client_id)
 
         if src:
             query = (query

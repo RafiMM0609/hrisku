@@ -25,6 +25,7 @@ class Tax(Base):
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)
     isact = Column(Boolean, default=True)
+    year = Column(Integer, nullable=True)
 
     # Relation
     clients = relationship("Client", back_populates="client_tax", foreign_keys=[client_id])

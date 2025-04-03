@@ -130,6 +130,7 @@ async def list_client_route(
             src=src,
             page=page,
             page_size=page_size,
+            user=user,
         )
         return common_response(
             Ok(

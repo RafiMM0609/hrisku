@@ -1,11 +1,16 @@
 from typing import Optional, List
 from math import ceil
 from sqlalchemy import select, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from models.Client import Client
 from core.file import generate_link_download
 from models.User import User
 from models.ClientPayment import ClientPayment
+from models.ContractClient import ContractClient
+from models.Tax import Tax
+from models.Allowances import Allowances
+from models.Bpjs import Bpjs
+from models import SessionLocal
 from pytz import timezone
 from settings import TZ
 from math import ceil
@@ -16,140 +21,128 @@ from schemas.clientbilling import (
     ListDetailBillingAction,
     )
 from pydantic import BaseModel
-from datetime import date
+from datetime import datetime, timedelta, time, date
 
 async def list_billing_action(
     db: Session,
     id: str,
 ) -> ListDetailBillingAction:
     try:
-        # Query the ClientPayment with its related Client
-        query = (
-            select(ClientPayment)
+        # Query ClientPayment dengan eager loading untuk menghindari query tambahan
+        # query = (
+        #     select(ClientPayment)
+        #     .join(Client, Client.id == ClientPayment.client_id, isouter=True)
+        #     .options(
+        #         joinedload(ClientPayment.clients).joinedload(Client.client_tax),
+        #         joinedload(ClientPayment.clients).joinedload(Client.allowances),
+        #         joinedload(ClientPayment.clients).joinedload(Client.bpjs),
+        #         joinedload(ClientPayment.clients).joinedload(Client.user_client),
+        #     )
+        #     .filter(ClientPayment.isact == True, ClientPayment.id == id)
+        #     .limit(1)
+        # )
+        # payment = db.execute(query).scalar_one_or_none()
+        payment = (
+            db.query(ClientPayment)
             .join(Client, Client.id == ClientPayment.client_id)
+            .options(
+                joinedload(ClientPayment.clients).joinedload(Client.client_tax),
+                joinedload(ClientPayment.clients).joinedload(Client.allowances),
+                joinedload(ClientPayment.clients).joinedload(Client.bpjs),
+                joinedload(ClientPayment.clients).joinedload(Client.user_client),
+            )
             .filter(ClientPayment.isact == True, ClientPayment.id == id)
-            .limit(1)
+            .first()
         )
-        payment = db.execute(query).scalar_one_or_none()
-        
+
         if not payment:
-            return ListDetailBillingAction().model_dump()
-        
+            return ListDetailBillingAction(
+                title=None,
+                client_id=None,
+                client_name=None,
+                start_period=None,
+                end_period=None,
+                detail=[]
+            ).dict()
+
         client = payment.clients
-        
-        # Get related data
         taxes = client.client_tax
         allowances = client.allowances
         bpjs_data = client.bpjs
-        
-        # Format period dates
         month_year = payment.date.strftime("%d-%m-%Y") if payment.date else "N/A"
-        
-        # Build detail items
+
         detail_items = []
-        total_nominal = 0
-    
-        # Total Salary
-        basic_salary = client.basic_salary
+        total_nominal = 0.000
+
+        # Initiate fungsi for append data to ListDetail
+        def add_detail_item(keterangan, nominal=None, jumlah=None):
+            detail_items.append(
+                ListDetailKeterangan(
+                    keterangan=keterangan,
+                    nominal=nominal,
+                    jumlah=jumlah
+                )
+            )
+
+        # Total Salary Initiate
+        basic_salary = client.basic_salary or 0.00
         total_employee = len(client.user_client)
-        total_nominal += basic_salary * total_employee
-        # Set biaya operasional to basic salary if no employee
-        if total_nominal == 0:
-            total_nominal = basic_salary
+        total_nominal = 0.00
+        total_bpjs = 0.00
+        total_taxes = 0.00
 
-        # Biaya Operasional
-        detail_items.append(
-        ListDetailKeterangan(
-            keterangan=f"Biaya Operasional",
-            nominal=total_nominal,
-            jumlah=None  # Not updating jumlah for individual items
-        )
-        )
+        # Perhitungan untuk setiap karyawan
+        for _ in range(total_employee):
+            # Perhitungan BPJS per karyawan
+            for bpjs in bpjs_data:
+                bpjs_amount = ((bpjs.amount or 0) / 100) * basic_salary
+                total_bpjs += bpjs_amount
+                total_nominal += bpjs_amount
 
-        # Add allowance details
+            # Perhitungan Tax per karyawan
+            for tax in taxes:
+                tax_amount = ((tax.percent or 0) / 100) * (basic_salary * 12)
+                total_taxes += tax_amount
+                total_nominal += tax_amount
+
+        # Total Gaji Awal
+        total_gaji_awal = basic_salary * total_employee
+        total_nominal += total_gaji_awal
+
+        # Add Allowances
         for allowance in allowances:
-            allowance_amount = float(allowance.amount) if allowance.amount else 0
+            allowance_amount = allowance.amount or 0
             total_nominal += allowance_amount
-            detail_items.append(
-            ListDetailKeterangan(
-                keterangan=f"Allowance {allowance.name}",
-                nominal=allowance_amount,
-                jumlah=None  # Not updating jumlah for individual items
-            )
-            )
-        
-        # Add BPJS details
-        for bpjs in bpjs_data:
-            bpjs_amount = float(bpjs.amount) if bpjs.amount else 0
-            total_nominal += bpjs_amount
-            detail_items.append(
-            ListDetailKeterangan(
-                keterangan=f"BPJS {bpjs.name}",
-                nominal=bpjs_amount,
-                jumlah=None  # Not updating jumlah for individual items
-            )
-            )
+            add_detail_item(f"Allowance {allowance.name}", nominal=allowance_amount)
 
-        # Total Biaya Operasional
-        detail_items.append(
-        ListDetailKeterangan(
-            keterangan=f"Total Biaya Operasional",
-            nominal=None,
-            jumlah=total_nominal  # updating jumlah for total
-        )
-        )
+        # Add BPJS to detail
+        add_detail_item("Total BPJS", nominal=total_bpjs)
 
-        # Add agency fee
-        agency_fee=client.fee_agency*total_nominal
+        # Add Taxes to detail
+        add_detail_item("Total Taxes", nominal=total_taxes)
+
+        # Add Total Biaya Operasional
+        add_detail_item("Total Biaya Operasional", jumlah=total_nominal)
+
+        # Agency Fee
+        agency_fee = (client.fee_agency or 0) / 100 * total_nominal
         total_nominal += agency_fee
-        detail_items.append(
-            ListDetailKeterangan(
-                keterangan=f"Agency Fee {client.fee_agency}%",
-                nominal=agency_fee,
-                jumlah=None  # Not updating jumlah for individual items
-            )
-        )
+        add_detail_item(f"Agency Fee {client.fee_agency}%", nominal=agency_fee)
 
-        # Jumlah Biaya
-        detail_items.append(
-            ListDetailKeterangan(
-                keterangan=f"Jumlah Biaya",
-                nominal=None,
-                jumlah=total_nominal  # updating jumlah for amount
-            )
-        )
-        # Add tax details
-        for tax in taxes:
-            tax_nominal = float(tax.percent) if tax.percent else 0
-            amount_tax = tax_nominal * total_nominal
-            total_nominal += amount_tax
-            detail_items.append(
-            ListDetailKeterangan(
-                keterangan=f"{tax.name} {tax.percent}%",
-                nominal=tax_nominal,
-                jumlah=None  # Not updating jumlah for individual items
-            )
-            )
-        
-        # Add Final Grand Total
-        detail_items.append(
-            ListDetailKeterangan(
-                keterangan="Grand Total",
-                nominal=None,
-                jumlah=total_nominal # updating jumlah for amount
-            )
-        )
-        
-        # Create response object
+        # Grand Total
+        add_detail_item("Grand Total", jumlah=total_nominal)
+
+
+        # Response
         result = ListDetailBillingAction(
-            title=f"Laporan Pengeluaran Biaya Program",
+            title="Laporan Pengeluaran Biaya",
             client_id=client.id,
             client_name=client.name,
             start_period=month_year,
             end_period=month_year,
             detail=detail_items
         ).dict()
-        
+
         return result
     except Exception as e:
         print(f"Failed to get billing action: {str(e)}")
@@ -160,6 +153,7 @@ async def list_client_billing(
     src:Optional[str]=None,
     page:Optional[int]=1,
     page_size:Optional[int]=10,
+    user:Optional[User]=None,
 ):
     try:        
         limit = page_size
@@ -169,6 +163,12 @@ async def list_client_billing(
         )
         query_count = (select(func.count(Client.id)).filter(Client.isact==True)
         )
+
+        if user:
+            print("Ini role user : \n", user.roles[0].id)
+            if user.roles[0].id==2:
+                query = (query.filter(Client.id_client==user.client_id))
+                query_count = (query_count.filter(Client.id_client==user.client_id))
 
         if src:
             query = (query
@@ -264,5 +264,110 @@ async def list_detail_cb(
     except Exception as e:
         print("Error list detail: \n", e)
         raise ValueError("Failed get data list payment client")
-
     
+
+async def add_client_payment(client_id):
+    db = SessionLocal()
+    try:
+        # Fetch the end date of the contract from ContractClient
+        contract = (
+            db.query(ContractClient)
+            .filter(ContractClient.client_id == client_id)
+            .order_by(ContractClient.end.desc())
+            .first()
+        )
+        if not contract or not contract.end:
+            raise ValueError("Contract end date not found for the given client.")
+
+        date = contract.end_date  # Use the end date of the contract
+        # Query ClientPayment dengan eager loading untuk menghindari query tambahan
+        query = (
+            select(Client)
+            .options(
+                joinedload(Client.client_tax),
+                joinedload(Client.allowances),
+                joinedload(Client.bpjs),
+                joinedload(Client.user_client),
+            )
+            .filter(Client.isact == True, Client.id == client_id)
+            .limit(1)
+        )
+        client = db.execute(query).scalar_one_or_none()
+        taxes = client.client_tax
+        allowances = client.allowances
+        bpjs_data = client.bpjs
+        user_client = client.user_client
+
+        # Initialize total nominal with basic salary
+        total_nominal = 0.00
+        basic_salary = client.basic_salary or 0.00
+        basic_salary_in_period = basic_salary * 12
+        total_employee = len(user_client)
+        total_gaji_awal = basic_salary_in_period * total_employee
+        total_nominal += total_gaji_awal
+
+        # Perhitungan pergaji karyawan
+        for _ in range(total_employee):  # Corrected loop syntax
+            # Add BPJS
+            total_bpjs = 0.00
+            for item in bpjs_data:
+                bpjs_amount = ((item.amount or 0) / 100) * basic_salary
+                total_bpjs += bpjs_amount
+                total_nominal += bpjs_amount
+
+            # Add Taxes (percentage-based)
+            total_taxes = 0.00
+            for tax in taxes:
+                tax_amount = ((tax.percent or 0) / 100) * basic_salary_in_period
+                total_taxes += tax_amount
+                total_nominal += tax_amount
+
+        # Add Allowances
+        total_allowances = sum(allowance.amount or 0 for allowance in allowances)
+        total_nominal += total_allowances
+
+        # # Add BPJS
+        # total_bpjs = 0.00
+        # for item in bpjs_data:
+        #     bpjs_amount = (item.percent or 0) * total_gaji_awal
+        #     total_bpjs += bpjs_amount
+        #     total_nominal += bpjs_amount
+
+        # # Add Taxes (percentage-based)
+        # total_taxes = 0
+        # for tax in taxes:
+        #     tax_amount = (tax.percent or 0) * total_gaji_awal
+        #     total_taxes += tax_amount
+        #     total_nominal += tax_amount
+
+        # Grand Total
+        grand_total = total_nominal
+
+        # Check if data already exists
+        existing_payment = (
+            db.query(ClientPayment)
+            .filter(ClientPayment.client_id == client_id, ClientPayment.date == date)
+            .first()
+        )
+
+        if existing_payment:
+            # Update existing record
+            existing_payment.amount = grand_total
+        else:
+            # Add new record
+            new_payment = ClientPayment(
+                client_id=client_id,
+                date=date,
+                amount=grand_total,
+                status_id=1,
+            )
+            db.add(new_payment)
+
+        db.commit()
+        return "oke"
+    except Exception as e:
+        print("Error add client payment: \n", e)
+        raise ValueError("Failed to add client payment")
+    finally:
+        db.close()
+

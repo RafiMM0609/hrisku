@@ -34,6 +34,7 @@ class Attendance(Base):
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
     isact = Column(Boolean, default=True)
+    distance = Column(Numeric(12, 8), nullable=True)
 
     # Many to Many
     users = relationship("User", back_populates="attendance_user", foreign_keys=[emp_id])

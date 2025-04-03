@@ -6,7 +6,8 @@ from sqlalchemy import (
     ForeignKey, 
     Boolean, 
     Float, 
-    Date
+    Date,
+    Numeric,
 )
 from pytz import timezone
 from sqlalchemy.orm import relationship
@@ -34,7 +35,7 @@ class Client(Base):
     cs_email = Column(String, nullable=True)
     address = Column(String, nullable=True)
     website = Column(String, nullable=True)
-    fee_agency = Column(Float, nullable=True)
+    fee_agency = Column(Numeric(10, 6), nullable=True)
     basic_salary = Column(Float, nullable=True)
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)

@@ -1,7 +1,7 @@
 from typing import Optional, List
 import secrets
 from math import ceil
-from sqlalchemy import select, func, update
+from sqlalchemy import or_, select, func, update
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, upload_file_from_path_to_minio, generate_link_download
@@ -708,7 +708,8 @@ async def list_talent(
     db: Session,
     page: int,
     page_size: int,
-    src: Optional[str] = None
+    src: Optional[str] = None,
+    user: Optional[User] = None,
 )->ListAllUser:
     try:
         limit = page_size
@@ -729,11 +730,17 @@ async def list_talent(
             .join(UserRole, User.id == UserRole.c.emp_id)
             .filter(User.isact == True, UserRole.c.role_id == 1))
 
+
         # Query count untuk paginasi
         query_count = (select(func.count(User.id))
                        .join(UserRole, User.id == UserRole.c.emp_id)
                        .filter(User.isact == True, UserRole.c.role_id == 1))
 
+        # If admin hanya client dia
+        if user:
+            if user.roles[0].id==2:
+                query = query.filter(or_(User.client_id == user.client_id, User.client_id == None))
+                query_count = query_count.filter(or_(User.client_id == user.client_id, User.client_id == None))
         # Jika ada pencarian (src), cari di nama user & nama client
         if src:
             query = (query.filter(

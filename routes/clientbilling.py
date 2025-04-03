@@ -59,6 +59,7 @@ async def list_cb_route(
             src=src,
             page=page,
             page_size=page_size,
+            user=user,
         )
         return common_response(
             Ok(

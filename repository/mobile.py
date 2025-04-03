@@ -1,4 +1,4 @@
-from typing import Optional, List, Type
+from typing import Optional, List, Tuple, Type
 from math import ceil, radians, sin, cos, sqrt, atan2  # Add these imports for Haversine formula
 import secrets
 from sqlalchemy import select, func, distinct, or_, and_, case  # Added and_ import
@@ -89,6 +89,23 @@ async def get_status_attendance(
         print("Error get status attendance: \n", e)
         raise ValueError("Failed get status attendance: \n", e)
 
+def get_range_for_a_month(today:Optional[str]=None)->Tuple[datetime.date, datetime.date]:
+    # Data preparation
+    if not today:
+        today = datetime.now(timezone(TZ)).date()
+    else:
+        today = datetime.strptime(today, "%d-%m-%Y").date()
+    
+    # get range 1 month
+    first_day_of_month = today.replace(day=1)
+    last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
+                else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
+    
+    # Override with parameters if provided
+    start_date = first_day_of_month
+    end_date = last_day_of_month
+    return start_date, end_date
+
 async def get_menu_absensi(
     db: Session,
     user: User,
@@ -101,14 +118,15 @@ async def get_menu_absensi(
         # Data preparation
         today = datetime.now(timezone(TZ)).date()
         
-        # Default date range - current month
-        first_day_of_month = today.replace(day=1)
-        last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
-                    else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
+        # get range 1 month
+        # first_day_of_month = today.replace(day=1)
+        # last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
+        #             else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
         
-        # Override with parameters if provided
-        start_date = datetime.strptime(start, "%d-%m-%Y").date() if start else first_day_of_month
-        end_date = datetime.strptime(end, "%d-%m-%Y").date() if end else last_day_of_month
+        # # Override with parameters if provided
+        # start_date = datetime.strptime(start, "%d-%m-%Y").date() if start else first_day_of_month
+        # end_date = datetime.strptime(end, "%d-%m-%Y").date() if end else last_day_of_month
+        start_date, end_date = get_range_for_a_month()
         
         # Query attendance data with date filter
         query_data_att = (
@@ -136,6 +154,7 @@ async def get_menu_absensi(
             .limit(100)
         ).scalars().all()
         
+        # Return Default Data
         if not data_att:
             return DataMenuAbsensi(
             this_month=today.strftime("%B %Y"),
@@ -226,6 +245,16 @@ async def get_menu_absensi(
         print("Error get menu absensi: \n", e)
         raise ValueError("Failed get menu absensi")
 
+
+# Haversine formula to calculate distance
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371  # Radius of Earth in kilometers
+    dlat = radians(lat2 - float(lat1))
+    dlon = radians(lon2 - float(lon1))
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return R * c * 1000
+
 async def get_menu_checkout(
     db: Session,
     user: User,
@@ -263,9 +292,7 @@ async def get_menu_checkout(
             return R * c
 
         # Calculate distance between user and outlet in kilometers
-        distance = haversine(att_data.latitude, att_data.longitude, outlet.latitude, outlet.longitude)
-        # In centimeters
-        distance_cm = distance * 100000
+        distance_m = haversine(att_data.latitude, att_data.longitude, outlet.latitude, outlet.longitude)
 
         return DataMenuCheckout(
             outlet=DataOutlet(
@@ -277,7 +304,7 @@ async def get_menu_checkout(
             ),
             user_latitude=att_data.latitude,
             user_longitude=att_data.longitude,
-            distance=round(distance_cm, 2),
+            distance=round(distance_m, 2),
             clock_in=att_data.clock_in.strftime("%H:%M"),
             clock_out=att_data.clock_out.strftime("%H:%M") if att_data.clock_out else None,
         ).dict()
@@ -387,6 +414,14 @@ async def add_checkin(
 ):
     try:
         # Data Preparation
+        data_outlet = db.execute(
+            select(ClientOutlet).filter(ClientOutlet.id==data.outlet_id)
+        ).scalar()
+        if not data_outlet:
+            raise ValueError("Outlet not found")
+        # Calculate distance
+        distance_m = haversine(data.latitude, data.longitude, data_outlet.latitude, data_outlet.longitude)
+
         today = datetime.now(timezone(TZ)).date()
         today_name = datetime.now(timezone(TZ)).strftime("%A")  # Get day name like "Monday", "Tuesday", etc.
         shift = db.execute(
@@ -397,7 +432,8 @@ async def add_checkin(
         ).scalar_one_or_none()
         if not shift:
             raise ValueError("Shift not found")
-        # Check if user already checkin and not checkout
+        
+        # Check if user already checkin and not yet checkout
         query_attendance = db.execute(
             select(Attendance).filter(
                 Attendance.emp_id==user.id, 
@@ -417,10 +453,6 @@ async def add_checkin(
                 shift=shift,
                 status=status,
             )
-        
-        # checkin = datetime.now(timezone(TZ))
-        # if shift.time_start <= checkin.time():
-        #     status = "Terlambat"
 
         # Insert data
         checkin = Attendance(
@@ -435,15 +467,17 @@ async def add_checkin(
             isact=True,
             created_by=user.id,
             created_at=datetime.now(timezone(TZ)),
+            distance=distance_m,
         )
 
         db.add(checkin)
         db.commit()
         return "OK"
-        
+    except ValueError as e:
+        raise ValueError(e)
     except Exception as e:
         print("Error add checkin: \n", e)
-        raise ValueError(e)
+        raise ValueError("Failed checkin")
     
 async def check_first_attendance(
     db:Session,
@@ -564,20 +598,6 @@ async def add_checkout(
             add_timesheet,
             timesheet_data
         )
-        
-        # new_timesheet = TimeSheet(
-        #     emp_id=user.id,
-        #     client_id=user.client_id,
-        #     clock_in=clock_in_dt,
-        #     clock_out=clock_out_dt,
-        #     total_hours=time_duration,
-        #     note=data.note,
-        #     created_by=user.id,
-        #     created_at=datetime.now(timezone(TZ)),
-        #     isact=True,
-        #     outlet_id=checkout.loc_id,
-        # )
-        # db.add(new_timesheet)
 
         checkout.updated_by = user.id
         checkout.updated_at = datetime.now(timezone(TZ))

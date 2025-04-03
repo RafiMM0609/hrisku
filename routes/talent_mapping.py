@@ -104,6 +104,7 @@ async def list_user_route(
             page=page,
             page_size=page_size,
             src=src,
+            user=user,
         )
         return common_response(Ok(
             data=user_data,

@@ -1,7 +1,7 @@
 from typing import Optional, List
 import secrets
 from math import ceil
-from sqlalchemy import select, func
+from sqlalchemy import or_, select, func
 from sqlalchemy.orm import Session, aliased, joinedload
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local, generate_link_download
@@ -396,7 +396,8 @@ async def list_talent(
     db: Session,
     page: int,
     page_size: int,
-    src: Optional[str] = None
+    src: Optional[str] = None,
+    user:Optional[User] = None,
 )->ListAllUser:
     try:
         limit = page_size
@@ -424,6 +425,13 @@ async def list_talent(
             .join(UserRole, User.id == UserRole.c.emp_id)
             .filter(User.isact == True, UserRole.c.role_id == 1)
             )
+        
+        # If user == admin, hanya client dia
+        print("user: ", user.roles[0].id if user else None)
+        if user:
+            if user.roles[0].id==2:
+                query = query.filter(or_(User.client_id == user.client_id, User.client_id == None))
+                query_count = query_count.filter(or_(User.client_id == user.client_id, User.client_id == None))
 
         # Jika ada pencarian (src), cari di nama user & nama client
         if src:

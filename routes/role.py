@@ -83,7 +83,7 @@ async def list_role_route(
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def list_role_route(
+async def list_role_option_route(
     db: Session = Depends(get_db),
     src:Optional[str] = None,
     token: str = Depends(oauth2_scheme),
@@ -112,7 +112,7 @@ async def list_role_route(
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def list_role_route(
+async def detail_role_route(
     id_role:str,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
@@ -142,7 +142,7 @@ async def list_role_route(
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def list_role_route(
+async def list_user_role_route(
     id_role:str,
     page:Optional[int]=1,
     page_size:Optional[int]=10,

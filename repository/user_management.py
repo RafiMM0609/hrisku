@@ -1,24 +1,22 @@
 from typing import Optional, List
 import secrets
+from core.mail import send_first_password_email
 from math import ceil
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session, aliased
-from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, delete_file_in_local, generate_link_download, upload_file_from_path_to_minio
+from core.file import generate_link_download, upload_file_from_path_to_minio
 from models.User import User
 from models.Role import Role
 from models.UserRole import UserRole
 from models.Client import Client
-from datetime import datetime, timedelta
+from datetime import datetime
 from pytz import timezone
-from settings import TZ, LOCAL_PATH
-from fastapi import UploadFile
+from settings import TZ
 from schemas.user_management import (
     AddUserRequest,
     EditUserRequest
 )
 import os
-import asyncio
 
 
 async def detail_user(
@@ -86,8 +84,7 @@ async def add_user(
         ).scalar_one()
         if not role:
             raise ValueError("Role not found")
-        password = secrets.token_urlsafe(16)
-        # hashed_password = generate_hash_password(password)
+        password = ''.join(secrets.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') for _ in range(8))
         if payload.photo:
             photo_path = os.path.join("profile", payload.photo.split("/")[-1])
             photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
@@ -115,6 +112,13 @@ async def add_user(
         update(User).where(User.id == new_user.id).values(id_user=await create_custom_id(new_user.id_seq))
         )
         db.commit()
+        await send_first_password_email(
+            email_to=new_user.email,
+            body={
+                "email": new_user.email,
+                "password": password
+                }
+        )
         return new_user
     except Exception as e:
         print("Error add user : \n", e)
@@ -179,7 +183,7 @@ async def edit_user_validator(
 
         if payload.email:
             queries.append(select(User)
-                .filter(User.id != id, User.email == payload.email, User.isact==True).exists())
+                .filter(User.id_user != id, User.email == payload.email, User.isact==True).exists())
 
         if queries:
             result = db.execute(select(*queries)).fetchall()
@@ -203,14 +207,14 @@ async def edit_user(
 ):
     try:
         user_exist = db.execute(
-            select(User).filter(User.id == id)
-        ).scalar_one()
+            select(User).filter(User.id_user == id)
+        ).scalar()
         if not user_exist:
             raise ValueError("User not found")
         if payload.role_id:
             role = db.execute(
                 select(Role).filter(Role.id == payload.role_id)
-            ).scalar_one()
+            ).scalar()
             if not role:
                 raise ValueError("Role not found")
             user_exist.roles.clear()

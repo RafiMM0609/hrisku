@@ -353,7 +353,7 @@ async def add_talent(
         role = db.execute(
             select(Role)
             .filter(Role.id==role_id)).scalar()
-        password = secrets.token_urlsafe(16)
+        password = ''.join(secrets.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') for _ in range(8))
         new_user = User(
             photo=photo_path,
             name=payload.name,

@@ -5,6 +5,7 @@ from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import Session, aliased
 from core.security import validated_user_password, generate_hash_password
 from core.file import upload_file_to_local, delete_file_in_local
+from models import SessionLocal
 from models.User import User
 from models.Role import Role
 from models.Client import Client
@@ -76,11 +77,11 @@ async def list_role(
         data = db.execute(query).scalars().all()
         num_data = db.execute(query_count).scalar()
         num_page = ceil(num_data / limit)
-        return (await formating_role(data), num_data, num_page)
+        return (await formating_role(data, db), num_data, num_page)
     except Exception as e:
         raise ValueError(e)
 
-async def formating_role(data):
+async def formating_role(data,db):
     data_response = []
     for d in data:
         permissions = []
@@ -101,16 +102,22 @@ async def formating_role(data):
                 else None,
             } for x in data_permission
         ]
+        total_emp = db.execute(
+            select(func.count(User.id))
+            .join(UserRole, User.id == UserRole.c.emp_id)
+            .filter(UserRole.c.role_id == d.id, User.isact == True)
+        ).scalar()
         data_response.append(
             {
             "id": d.id,
             "name":d.name,
-            "total_user": len(d.users),
+            "total_user": total_emp,
             "permission": formated_permission,
             "status": d.isact
             }
         )
     return data_response
+
 
 async def detail_role(
     db:Session,

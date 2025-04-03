@@ -184,13 +184,13 @@ async def ViewTalentData(
             ClientOutlet.address.label('outlet_address'),
             ClientOutlet.latitude.label('outlet_latitude'),
             ClientOutlet.longitude.label('outlet_longitude')
-        ).join(
+        ).outerjoin(
             Client, User.client_id == Client.id
-        ).join(
+        ).outerjoin(
             ClientOutlet, User.outlet_id == ClientOutlet.id
-        ).join(
+        ).outerjoin(
             UserRole, User.id == UserRole.c.emp_id
-        ).join(
+        ).outerjoin(
             Role, UserRole.c.role_id == Role.id
         ).filter(
             User.id_user == talent_id
@@ -199,7 +199,31 @@ async def ViewTalentData(
         data = db.execute(query).one_or_none()
 
         if not data:
-            raise ValueError("Talent not found")
+            return ViewTalent(
+                personal=ViewPersonalInformation(
+                    talent_id=None,
+                    name=None,
+                    role_name=None,
+                    dob=None,
+                    nik=None,
+                    email=None,
+                    phone=None,
+                    address=None,
+                    face_id=None
+                ),
+                mapping=ViewMappingInformation(
+                    client_id=None,
+                    client_name=None,
+                    client_address=None,
+                    outlet_name=None,
+                    outlet_address=None,
+                    outlet_latitude=None,
+                    outlet_longitude=None,
+                    workdays=None,
+                    workarg=[],
+                    contract=None
+                )
+            ).dict()
 
         # Query to fetch user shift information
         shift_query = select(

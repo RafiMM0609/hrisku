@@ -142,27 +142,27 @@ class EditTalentRequest(BaseModel):
     
     
 class ViewPersonalInformation(BaseModel):
-    talent_id : str
-    name :str
-    role_name : str
-    dob : str
-    nik : str
-    email : str
-    phone : str
-    address : str
-    face_id : Optional[str]=None
+    talent_id: Optional[str] = None
+    name: Optional[str] = None
+    role_name: Optional[str] = None
+    dob: Optional[str] = None
+    nik: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    face_id: Optional[str] = None
     
 class ViewMappingInformation(BaseModel):
-    client_id : str
-    client_name : str
-    client_address : str
-    outlet_name : str
-    outlet_address : str
-    outlet_latitude : float
-    outlet_longitude : float
-    workdays : Optional[int] = None
-    workarg : Optional[List[ShiftResponse]]
-    contract : Optional[ContractManagement]
+    client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    client_address: Optional[str] = None
+    outlet_name: Optional[str] = None
+    outlet_address: Optional[str] = None
+    outlet_latitude: Optional[float] = None
+    outlet_longitude: Optional[float] = None
+    workdays: Optional[int] = None
+    workarg: Optional[List[ShiftResponse]] = []
+    contract: Optional[ContractManagement] = None
     
 class ViewTalent(BaseModel):
     personal : ViewPersonalInformation

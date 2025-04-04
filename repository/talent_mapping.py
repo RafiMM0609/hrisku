@@ -651,52 +651,61 @@ async def edit_talent(
         print("Error editing talent: \n", e)
         raise ValueError("Failed to edit talent")
 
-async def edit_contract(user_id:str, emp_id: str, payload: EditContractManagement):
+async def edit_contract(user_id: str, emp_id: str, payload: EditContractManagement):
     """
-    Edit contract data for a talent in the Contract table.
-    
-    Args:
-        db (Session): Database session
-        emp_id (str): Talent ID
-        payload (EditContractManagement): Updated contract details
+    Edit contract if payload.id is available, otherwise create a new one.
     """
-    db = SessionLocal()  # Ambil koneksi dari pool
+    db = SessionLocal()  # Get connection from the pool
     try:
         # Parse dates
         start_date = datetime.strptime(payload.start_date, "%d-%m-%Y").date()
         end_date = datetime.strptime(payload.end_date, "%d-%m-%Y").date()
         
         # Calculate period in months (approximate)
-        # delta = end_date - start_date
         period = end_date.year  # Simply get the year from the end date
         
-        # Fetch the existing contract
-        contract_query = select(Contract).filter(
-            Contract.id == payload.id,
-            Contract.emp_id == emp_id,
-            Contract.isact == True
-        ).limit(1)
-        existing_contract = db.execute(contract_query).scalar_one_or_none()
-        
-        if not existing_contract:
-            raise ValueError("Contract not found for the given employee ID")
-        
-        # Update contract details
-        existing_contract.start = start_date
-        existing_contract.end = end_date
-        existing_contract.period = int(period)
-        existing_contract.file = payload.file
-        existing_contract.file_name = payload.file.split("-")[0] if payload.file else None
-        existing_contract.updated_at = datetime.now(tz=timezone(TZ))
-        existing_contract.updated_by = user_id
+        if payload.id:
+            # Fetch the existing contract
+            contract_query = select(Contract).filter(
+                Contract.id == payload.id,
+                Contract.emp_id == emp_id,
+                Contract.isact == True
+            ).limit(1)
+            existing_contract = db.execute(contract_query).scalar_one_or_none()
+            
+            if not existing_contract:
+                raise ValueError("Contract not found for the given employee ID")
+            
+            # Update contract details
+            existing_contract.start = start_date
+            existing_contract.end = end_date
+            existing_contract.period = int(period)
+            existing_contract.file = payload.file
+            existing_contract.file_name = payload.file.split("-")[0] if payload.file else None
+            existing_contract.updated_at = datetime.now(tz=timezone(TZ))
+            existing_contract.updated_by = user_id
+        else:
+            # Create a new contract
+            new_contract = Contract(
+                emp_id=emp_id,
+                start=start_date,
+                end=end_date,
+                period=int(period),
+                file=payload.file,
+                file_name=payload.file.split("-")[0] if payload.file else None,
+                created_at=datetime.now(tz=timezone(TZ)),
+                updated_by=user_id,
+                isact=True
+            )
+            db.add(new_contract)
         
         db.commit()
-        return "Contract updated successfully"
+        return "Contract updated successfully" if payload.id else "Contract created successfully"
         
     except Exception as e:
         db.rollback()
-        print(f"Error editing contract: {e}")
-        raise ValueError(f"Failed to edit contract")
+        print(f"Error editing/creating contract: {e}")
+        raise ValueError("Failed to edit or create contract")
     finally:
         db.close()  # Ensure the connection is closed
 

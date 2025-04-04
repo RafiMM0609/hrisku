@@ -106,9 +106,9 @@ class ContractManagement(BaseModel):
     file:Optional[str]=None
 
 class EditContractManagement(BaseModel):
-    id:int
-    start_date:str
-    end_date:str
+    id:Optional[int]=None
+    start_date:Optional[str]=None
+    end_date:Optional[str]=None
     file:Optional[str]=None
     
 

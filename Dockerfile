@@ -18,6 +18,7 @@ COPY . .
 # CMD [ "poetry", "run", "uvicorn", "main:app","--host", "0.0.0.0", "--port", "8000", "--reload"]
 # CMD [ "uvicorn", "main:app","--host", "0.0.0.0", "--port", "8000", "--reload" ,"--log-config", "log_conf.json"]
 # CMD [ "uvicorn","main:app","--host","0.0.0.0","--port","8080","--workers", "4","--loop","\"uvloop\"","--http" "\"httptools\"","--backlog","2048"]
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--loop", "uvloop", "--http", "httptools", "--backlog", "2048", "--reload"]
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--loop", "uvloop", "--http", "httptools", "--backlog", "2048", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "6"]
 # CMD [ "uvicorn","main:app","--host","0.0.0.0","--port","8000","--workers","--loop","\"uvloop\"","--backlog","2048"]
 # uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --loop "uvloop" --http "httptools" --backlog 2048

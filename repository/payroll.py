@@ -8,15 +8,16 @@ from models.Payroll import Payroll
 from models.EmployeeAllowances import EmployeeAllowances
 from models.EmployeeTax import EmployeeTax
 from models.BpjsEmployee import BpjsEmployee
+
 def get_days_in_month(year, month):
     return calendar.monthrange(year, month)[1]
 
-# Contoh penggunaan
-year = 2025
-month = 4
+# # Contoh penggunaan
+# year = 2025
+# month = 4
 
-days_in_month = get_days_in_month(year, month)
-print(f"Bulan {month}/{year} memiliki {days_in_month} hari.")
+# days_in_month = get_days_in_month(year, month)
+# print(f"Bulan {month}/{year} memiliki {days_in_month} hari.")
 
 async def add_monthly_salary_emp(emp_id, client_id):
     db = SessionLocal()

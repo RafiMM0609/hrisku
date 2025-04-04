@@ -595,6 +595,29 @@ async def edit_talent(
         db.commit()
         db.refresh(user_exist)
 
+        # # Handle email change and first login password
+        # new_email = user_exist.email
+        # if old_email != new_email and user_exist.first_login is not None:
+        #     await send_first_password_email(
+        #         email_to=user_exist.email,
+        #         body={
+        #             "email": user_exist.email,
+        #             "password": user_exist.first_login,
+        #         }
+        #     )
+
+        # Handle email change and first login password
+        new_email = user_exist.email
+        if old_email != new_email and user_exist.first_login is not None:
+            background_tasks.add_task(
+                send_first_password_email,
+                email_to=user_exist.email,
+                body={
+                    "email": user_exist.email,
+                    "password": user_exist.first_login,
+                }
+            )
+
         # Handle shifts and contracts in background tasks
         if isinstance(payload.shift, (list, tuple)):
             background_tasks.add_task(
@@ -612,17 +635,6 @@ async def edit_talent(
                 user.id,
                 user_exist.id,
                 payload.contract,
-            )
-
-        # Handle email change and first login password
-        new_email = user_exist.email
-        if old_email != new_email and user_exist.first_login is not None:
-            await send_first_password_email(
-                email_to=user_exist.email,
-                body={
-                    "email": user_exist.email,
-                    "password": user_exist.first_login,
-                }
             )
 
         # Add monthly salary task

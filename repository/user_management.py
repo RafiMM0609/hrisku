@@ -78,19 +78,31 @@ async def add_user(
     payload: AddUserRequest,
     user: User
 ):
+    """
+    This function is used to add a user to the database
+    and send an email to the user with a password.
+    If payload.role == 2, then payload.client_id is required.
+    """
     try:
+        # Validate that client_id is provided if role_id == 2
+        if payload.role_id == 2 and not payload.client_id:
+            raise ValueError("Client ID is required when role_id is 2")
+
         role = db.execute(
             select(Role).filter(Role.id == payload.role_id)
         ).scalar_one()
         if not role:
             raise ValueError("Role not found")
+
         password = ''.join(secrets.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') for _ in range(8))
+
         if payload.photo:
             photo_path = os.path.join("profile", payload.photo.split("/")[-1])
             photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
             print(photo_path)
         else:
             photo_path = None
+
         new_user = User(
             email=payload.email,
             name=payload.name,
@@ -100,38 +112,43 @@ async def add_user(
             created_by=user.id,
             photo=photo_path,
             created_at=datetime.now(tz=timezone(TZ)),
+            client_id=payload.client_id if payload.client_id else None
         )
         new_user.roles.append(role)
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        # new_user.id_user = await create_custom_id(new_user.id_seq)
-        # db.merge(new_user)  # Gunakan merge daripada add untuk menghindari error
-        # db.commit()
+
         db.execute(
-        update(User).where(User.id == new_user.id).values(id_user=await create_custom_id(new_user.id_seq))
+            update(User).where(User.id == new_user.id).values(id_user=await create_custom_id(new_user.id_seq))
         )
         db.commit()
+
         await send_first_password_email(
             email_to=new_user.email,
             body={
                 "email": new_user.email,
                 "password": password
-                }
+            }
         )
         return new_user
-    except Exception as e:
-        print("Error add user : \n", e)
+
+    except ValueError as ve:
+        print("ValueError occurred:", ve)
         db.rollback()
-        db.execute(
-            (
+        raise ve
+
+    except Exception as e:
+        print("Error adding user:\n", e)
+        db.rollback()
+        if 'new_user' in locals():
+            db.execute(
                 update(User)
                 .where(User.id == new_user.id)
                 .values(isact=False)
             )
-        )
-        db.commit()
-        raise ValueError("Failed add user")
+            db.commit()
+        raise ValueError("Failed to add user")
     
 async def create_custom_id(
         id: int, 

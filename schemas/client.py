@@ -71,31 +71,38 @@ class EditAllowencesRequest(BaseModel):
 
 class AddClientRequest(BaseModel):
     photo:Optional[str]=None
-    name: str
-    address: str
-    outlet: List[Outlet]
-    basic_salary: float
-    agency_fee: float
+    name: Optional[str] = None
+    address: Optional[str] = None
+    outlet: Optional[List[Outlet]] = None
+    basic_salary: Optional[float] = None
+    agency_fee: Optional[float] = None
     payment_date:str = "01-12-2999"
     bpjs: Optional[List[AddBpjsRequest]] = None
     allowences: Optional[List[AddAllowencesRequest]] = None
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None
+    start_contract: Optional[str] = None #20-12-2023
+    end_contract: Optional[str] = None #20-12-2024
+    file_contract: Optional[str] = None
 
 class EditClientRequest(BaseModel):
     photo:Optional[str]=None
-    name: str
-    address: str
-    outlet: List[OutletEdit]
-    basic_salary: float
-    agency_fee: float
-    payment_date:str = "01-12-2999"
+    name: Optional[str] = None
+    address: Optional[str] = None
+    outlet: Optional[List[OutletEdit]] = None
+    basic_salary: Optional[float] = None
+    agency_fee: Optional[float] = None
+    payment_date:Optional[str] = None
     bpjs: Optional[List[EditBpjsRequest]] = None
     allowences: Optional[List[EditAllowencesRequest]] = None
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None
+    id_contract:Optional[str]=None
+    start_contract: Optional[str] = None #20-12-2023
+    end_contract: Optional[str] = None #20-12-2024
+    file_contract: Optional[str] = None
 
 class ListAllClient(BaseModel):
     id: int
@@ -152,6 +159,10 @@ class DetailClient(BaseModel):
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None
+    id_contract:Optional[str]=None
+    start_contract: Optional[str] = None #20-12-2023
+    end_contract: Optional[str] = None #20-12-2024
+    file_contract: Optional[str] = None
 
 class DetailClientResponse(BaseModel):
     meta: MetaResponse
@@ -179,6 +190,8 @@ class DataDetailClientSignature(BaseModel):
     cs_person: Optional[str] = None
     cs_number: Optional[str] = None
     cs_email: Optional[str] = None
+    contract_date:Optional[str] = None # 1 January 2024 - 31 December 2024
+    contract_file:Optional[str] = None # file name
 
 class DataDetailClientSignatureResponse(BaseModel):
     meta: MetaResponse

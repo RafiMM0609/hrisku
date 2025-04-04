@@ -9,6 +9,7 @@ from models.User import User
 from models.ClientOutlet import ClientOutlet
 from models.Bpjs import Bpjs
 from models.Allowances import Allowances
+from models.ContractClient import ContractClient
 from models import SessionLocal
 from datetime import datetime
 from pytz import timezone
@@ -148,6 +149,14 @@ async def add_client(
                     amount = data.amount
                 )
                 ls_allowances.append(new_allowances)
+        # Contract Handler
+        if payload.start_contract:
+            background_tasks.add_task(
+                add_client_contract,
+                payload=payload,
+                client_id=new_client.id,
+            )
+        # Tax handler
         data_tax = {
             "id_client": new_client.id, 
             "user_id": user.id
@@ -169,17 +178,80 @@ async def add_client(
         db.bulk_save_objects(ls_allowances)
         db.bulk_save_objects(ls_outlet)
         db.commit()
+
+        # Client payment handler
+        background_tasks.add_task(
+            add_client_payment,
+            new_client.id,
+        )        
         return new_client
     except Exception as e:
-        db.execute(
-            (
-                update(Client)
-                .where(Client.id == exist_client_id)
-                .values(isact=False)
-            )
-        )
-        db.commit()
         raise ValueError(e)
+    
+async def add_client_contract(payload: AddClientRequest, client_id):
+    """
+    This function adds a client contract to the ContractClient table based on the AddClientRequest schema.
+    Uses LocalSession to add data.
+    """
+    db = SessionLocal()
+    try:
+        # Dynamically assign client_id and other fields from payload
+        new_client_contract = ContractClient(
+            client_id=client_id,  # Integer, required
+            start=datetime.strptime(payload.start_contract, "%d-%m-%Y").date() if payload.start_contract else None,  # Date
+            end=datetime.strptime(payload.end_contract, "%d-%m-%Y").date() if payload.end_contract else None,  # Date
+            file_contract=payload.file_contract,  # String (max length 255), optional
+            created_at=datetime.now(tz=timezone(TZ)),  # DateTime with timezone
+        )
+        db.add(new_client_contract)
+        db.commit()
+        db.refresh(new_client_contract)
+        return {"success": True, "data": new_client_contract}
+    except Exception as e:
+        db.rollback()
+        print("Error adding client contract:", e)
+        raise ValueError(f"Failed to add client contract: {e}")
+    finally:
+        db.close()
+
+async def update_client_contract(payload: EditClientRequest, client_id):
+    """
+    This function adds or updare a client contract to the ContractClient table based on the EditClientRequest schema.
+    Uses LocalSession to add data.
+    If no contract_id is provided, it will create a new contract.
+    """
+    db = SessionLocal()
+    try:
+        if payload.id_contract:
+            # Update existing contract
+            client_contract = db.query(ContractClient).filter(ContractClient.id == payload.id_contract).first()
+            if not client_contract:
+                raise ValueError("Contract not found")
+            client_contract.start = datetime.strptime(payload.start_contract, "%d-%m-%Y").date() if payload.start_contract else None
+            client_contract.end = datetime.strptime(payload.end_contract, "%d-%m-%Y").date() if payload.end_contract else None
+            client_contract.file_contract = payload.file_contract
+            db.commit()
+            return {"success": True, "data": client_contract}
+        else:
+            # Create new contract
+            new_client_contract = ContractClient(
+                client_id=client_id,
+                start=datetime.strptime(payload.start_contract, "%d-%m-%Y").date() if payload.start_contract else None,
+                end=datetime.strptime(payload.end_contract, "%d-%m-%Y").date() if payload.end_contract else None,
+                file_contract=payload.file_contract,
+                created_at=datetime.now(tz=timezone(TZ)),
+            )
+            db.add(new_client_contract)
+            db.commit()
+            db.refresh(new_client_contract)
+            return {"success": True, "data": new_client_contract}
+    except Exception as e:
+        db.rollback()
+        print("Error updating client contract:", e)
+        raise ValueError(f"Failed to update client contract: {e}")
+    finally:
+        db.close()
+
 async def create_custom_id(
         id: int, 
         prefix:Optional[str]="C"
@@ -356,12 +428,15 @@ async def edit_validator(db: Session, payload: AddClientRequest, id:str):
         print(f"Validation error: {e}")
 
 async def edit_client(
-    db:Session,
-    user:User,
-    payload:EditClientRequest,
-    background_tasks:any,
-    client_id:str,
-)->Client:
+    db: Session,
+    user: User,
+    payload: EditClientRequest,
+    background_tasks: any,
+    client_id: str,
+) -> Client:
+    """
+    This function only updates fields that are not null.
+    """
     try:
         # If changes photo
         if payload.photo:
@@ -370,21 +445,31 @@ async def edit_client(
             print(photo_path)
         else:
             photo_path = None
+
         client = db.execute(select(Client).filter(Client.id_client == client_id)).scalar()
         if not client:
             raise ValueError("Client not found")
-        due_date_payment = datetime.strptime(payload.payment_date, "%d-%m-%Y").date()
-        client.photo = photo_path
-        client.name = payload.name
-        client.address = payload.address
-        client.fee_agency = payload.agency_fee
-        client.due_date_payment = due_date_payment
-        client.cs_person = payload.cs_person
-        client.cs_number = payload.cs_number
-        client.cs_email = payload.cs_email
+        if payload.payment_date:
+            due_date_payment = datetime.strptime(payload.payment_date, "%d-%m-%Y").date()
+        else:
+            due_date_payment = None
+
+
+        # Update fields only if they are not null
+        client.photo = photo_path if payload.photo else client.photo
+        client.name = payload.name if payload.name else client.name
+        client.address = payload.address if payload.address else client.address
+        client.fee_agency = payload.agency_fee if payload.agency_fee is not None else client.fee_agency
+        client.due_date_payment = due_date_payment if payload.payment_date else client.due_date_payment
+        client.cs_person = payload.cs_person if payload.cs_person else client.cs_person
+        client.cs_number = payload.cs_number if payload.cs_number else client.cs_number
+        client.cs_email = payload.cs_email if payload.cs_email else client.cs_email
         client.updated_by = user.id
+
         db.add(client)
         db.commit()
+
+        # Handle related entities
         if isinstance(payload.outlet, (list, tuple)):
             background_tasks.add_task(
                 edit_outlet,
@@ -403,23 +488,35 @@ async def edit_client(
                 payload.allowences,
                 client.id,
             )
+
+        # Contract Handler
+        if payload.start_contract or payload.end_contract or payload.file_contract:
+            background_tasks.add_task(
+                update_client_contract,
+                payload=payload,
+                client_id=client.id,
+            )
+
+        # Tax handler
         data_tax = {
-            "id_client": client.id, 
-            "user_id": user.id
+            "id_client": client.id,
+            "user_id": user.id,
         }
         background_tasks.add_task(
             add_tax_ppn,
             **data_tax
         )
         data_tax_pph = {
-            "id_client": client.id, 
-            "user_id": user.id, 
-            "basic_salary": payload.basic_salary
+            "id_client": client.id,
+            "user_id": user.id,
+            "basic_salary": client.basic_salary,  # Fetch basic_salary from the client object
         }
         background_tasks.add_task(
-        add_tax_pph,
-        **data_tax_pph
+            add_tax_pph,
+            **data_tax_pph
         )
+
+        # Client payment handler
         background_tasks.add_task(
             add_client_payment,
             client.id,
@@ -429,7 +526,7 @@ async def edit_client(
         db.rollback()
         db.execute(
             update(Client)
-            .where(Client.id==client.id)
+            .where(Client.id == client.id)
             .values(isact=False)
         )
         db.commit()
@@ -644,45 +741,58 @@ async def detail_client(
         raise ValueError("Failed to get detail client")
 
 async def formatin_detail(data: Client) -> DetailClient:
+    """
+    Format the client data to match the DetailClient Pydantic model.
+    """
     if not data:
         raise ValueError("Client not found")
 
+    # Extract contract data (if available)
+    contract = data.contract_clients[0] if data.contract_clients else None
+
     return DetailClient(
-        id=data.id_client,
-        photo=generate_link_download(data.photo),
-        name=data.name,
-        address=data.address,
+        id=str(data.id_client),  # Ensure id is a string
+        photo=generate_link_download(data.photo) if data.photo else None,  # Optional[str]
+        name=data.name,  # str
+        address=data.address,  # Optional[str]
         outlet=[
             OutletList(
-                id_outlet=x.id_outlet,
-                name=x.name,
-                total_active=len([o for o in data.outlets if o.isact]),  # Dynamically calculate total_active
-                address=x.address,
-                latitude=x.latitude,
-                longitude=x.longitude
-            ) for x in (data.outlets or []) if x.isact
-            ] if data.outlets else [],
-        basic_salary=data.basic_salary,
-        agency_fee=data.fee_agency,
-        payment_date=data.due_date_payment.strftime("%d-%m-%Y") if data.due_date_payment else None,
+                id_outlet=str(outlet.id_outlet) if outlet.id_outlet else None,  # Optional[str]
+                name=outlet.name,  # str
+                total_active=len([o for o in data.outlets if o.isact]),  # int
+                address=outlet.address,  # str
+                latitude=float(outlet.latitude),  # float
+                longitude=float(outlet.longitude)  # float
+            )
+            for outlet in (data.outlets or []) if outlet.isact
+        ] if data.outlets else [],  # Optional[List[OutletList]]
+        basic_salary=float(data.basic_salary) if data.basic_salary is not None else None,  # Optional[float]
+        agency_fee=float(data.fee_agency) if data.fee_agency is not None else None,  # Optional[float]
+        payment_date=data.due_date_payment.strftime("%d-%m-%Y") if data.due_date_payment else None,  # Optional[str]
         bpjs=[
             EditBpjsRequest(
-                id=x.id,
-                name=x.name,
-                amount=x.amount
-            ) for x in (data.bpjs or []) if x.isact
-        ] if data.bpjs else [],
+                id=int(bpjs.id),  # Optional[int]
+                name=bpjs.name,  # str
+                amount=float(bpjs.amount)  # float
+            )
+            for bpjs in (data.bpjs or []) if bpjs.isact
+        ] if data.bpjs else [],  # Optional[List[EditBpjsRequest]]
         allowences=[
             EditAllowencesRequest(
-                id=x.id,
-                name=x.name,
-                amount=x.amount
-            ) for x in (data.allowances or []) if x.isact
-        ] if data.allowances else [],
-        cs_person=data.cs_person,
-        cs_number=data.cs_number,
-        cs_email=data.cs_email
-    ).dict()
+                id=int(allowance.id),  # Optional[int]
+                name=allowance.name,  # str
+                amount=float(allowance.amount)  # float
+            )
+            for allowance in (data.allowances or []) if allowance.isact
+        ] if data.allowances else [],  # Optional[List[EditAllowencesRequest]]
+        cs_person=data.cs_person,  # Optional[str]
+        cs_number=data.cs_number,  # Optional[str]
+        cs_email=data.cs_email,  # Optional[str]
+        id_contract=str(contract.id) if contract else None,  # Optional[str]
+        start_contract=contract.start.strftime("%d-%m-%Y") if contract and contract.start else None,  # Optional[str]
+        end_contract=contract.end.strftime("%d-%m-%Y") if contract and contract.end else None,  # Optional[str]
+        file_contract=contract.file_contract if contract else None  # Optional[str]
+    ).model_dump()
 
 
 async def edit_outlet_bak(
@@ -777,24 +887,21 @@ def to_pydantic(result: Client) -> DataDetailClientSignature:
         OutletList(
             id_outlet=outlet.id_outlet,
             name=outlet.name,
-            total_active=12,  # Placeholder for total_active
+            total_active=len([o for o in result.outlets if o.isact]),  # Calculate total active outlets
             address=outlet.address,
             latitude=outlet.latitude,
             longitude=outlet.longitude,
-            cs_name="outlet.cs_name",  # Placeholder for CS name
-            cs_email="outlet.cs_email",  # Placeholder for CS email
-            cs_phone="outlet.cs_phone",  # Placeholder for CS phone
         )
         for outlet in result.outlets if outlet.isact
     ]
 
     # Parse payroll
     payroll = PayrollClient(
-        basic_salary=result.basic_salary,
-        agency_fee=result.fee_agency,
-        allowance=sum(allowance.amount for allowance in result.allowances if allowance.isact),
-        total_deduction=0,  # Placeholder for total_deduction
-        nett_payment=0,  # Placeholder for nett_payment
+        basic_salary=float(result.basic_salary) if result.basic_salary is not None else None,
+        agency_fee=float(result.fee_agency) if result.fee_agency is not None else None,
+        allowance=sum(float(allowance.amount) for allowance in result.allowances if allowance.isact),
+        total_deduction=0.0,  # Placeholder for total_deduction
+        nett_payment=0.0,  # Placeholder for nett_payment
         due_date=result.due_date_payment.strftime("%d-%m-%Y") if result.due_date_payment else None,
     )
 
@@ -811,7 +918,13 @@ def to_pydantic(result: Client) -> DataDetailClientSignature:
         cs_person=result.cs_person,
         cs_number=result.cs_number,
         cs_email=result.cs_email,
-    ).dict()
+        contract_date=(
+            f"{result.contract_clients[0].start.strftime('%d-%m-%Y')} - {result.contract_clients[0].end.strftime('%d-%m-%Y')}"
+            if result.contract_clients and result.contract_clients[0].start and result.contract_clients[0].end
+            else None
+        ),
+        contract_file=generate_link_download(result.contract_clients[0].file_contract) if result.contract_clients else None,
+    ).model_dump()
 
 # Panggil fungsi
 # client_data = to_pydantic(result)

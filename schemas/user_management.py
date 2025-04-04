@@ -19,11 +19,12 @@ class CreateSuccessResponse(BaseModel):
     message: str
 
 class AddUserRequest(BaseModel):
-    name: str
-    email: str
-    phone: str
-    role_id: int
-    address: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role_id: Optional[int] = None
+    client_id: Optional[int] = None
+    address: Optional[str] = None
     photo: Optional[str] = None
 
 class EditUserRequest(BaseModel):

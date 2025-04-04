@@ -12,6 +12,7 @@ class ContractClient(Base):
     client_id = Column(Integer, ForeignKey("client.id"),nullable=False, index=True)
     start = Column(Date, nullable=True)
     end = Column(Date, nullable=True)
+    file_contract = Column(String(255), nullable=True)
     manager_signature = Column(String(255), nullable=True)
     technical_signature = Column(String(255), nullable=True)
     created_by = Column(String(36), nullable=True)

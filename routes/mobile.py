@@ -434,6 +434,32 @@ async def list_leave_route(
         )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+
+@router.get("/list-payroll",
+    responses={
+        "200": {"model": ListPayrollResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_payroll_route(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    src: str = None,
+):
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        data_payroll = await mobileRepo.get_list_payroll()
+        return common_response(Ok(
+            message="Success list payroll",
+            data=data_payroll,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
     
 @router.get("/data-checkout",
     responses={
@@ -637,6 +663,35 @@ async def detail_menu_timesheet_route(
         return common_response(Ok(
             message="Success Data Menu Absensi",
             data=data_shift,
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.get("/detail-payroll/{id_payroll}",
+    responses={
+        "200": {"model": DetailPayrollResponse},
+        "400": {"model": BadRequestResponse},
+        "401": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def detail_payroll_route(
+    id_payroll:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    '''
+    id_timesheet disi dengan id yang ada di list
+    '''
+    user = get_user_from_jwt_token(db, token)
+    if not user:
+        return Unauthorized()
+    try:
+        detail_payroll = await mobileRepo.get_detail_payroll()
+        return common_response(Ok(
+            message="Success Data Payroll",
+            data=detail_payroll,
             )
         )
     except Exception as e:

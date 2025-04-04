@@ -42,6 +42,7 @@ from schemas.talent_monitor import (
     ContractManagementResponse,
     TalentAttendanceResponse,
     TalentTimesheetResponse,
+    TalentPayrollResponse,
 
 )
 # from core.file import generate_link_download
@@ -276,6 +277,35 @@ async def talent_performance_route(
         return common_response(Ok(
             data=performance_data,
             message="Success get attendance data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.get("/payroll/{talent_id}",
+    responses={
+        "200": {"model": TalentPayrollResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def talent_payroll_route(
+    talent_id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # if start_date:
+        #     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        # if end_date:
+        #     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        payroll_data = await TalentRepo.get_talent_payroll()
+        return common_response(Ok(
+            data=payroll_data,
+            message="Success get payroll data"
             )
         )
     except Exception as e:

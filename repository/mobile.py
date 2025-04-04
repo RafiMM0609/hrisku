@@ -29,7 +29,60 @@ from schemas.mobile import (
     HeaderAbsensi,
     CheckAttendance,
     DetailDataAbsensi,
+    ListPayroll,
+    DetailPayroll,
 )
+
+from decimal import Decimal
+
+async def get_list_payroll() -> List[ListPayroll]:
+    """
+    Return a list of payroll items, validated against the ListPayroll Pydantic model. Always return with model_dump.
+    """
+    try:
+        list_payroll = [
+            ListPayroll(
+                id=1,
+                date="March 2025",
+                performance="You are doing great 10/10",
+                utilization="100%",
+                net_salary=float(Decimal("1000000")),  # Convert to float
+            ).model_dump(),
+            ListPayroll(
+                id=2,
+                date="February 2025",
+                performance="Good job 8/10",
+                utilization="80%",
+                net_salary=float(Decimal("800000")),  # Convert to float
+            ).model_dump(),
+        ]
+        return list_payroll
+    except Exception as e:
+        print("Error get list payroll: \n", e)
+        raise ValueError("Failed to get list payroll")
+
+async def get_detail_payroll() -> DetailPayroll:
+    """
+    Return a DetailPayroll object with default values.
+    """
+    try:
+        detail_payroll = DetailPayroll(
+            date="March 2025",
+            client_name="PT. ABC",
+            client_address="Jl. ABC No. 1",
+            client_code="ABC123",
+            outlet_name="Outlet ABC",
+            outlet_address="Jl. ABC No. 1",
+            outlet_latitude=-6.123456,
+            outlet_longitude=106.123456,
+            download_link="https://example.com/download",
+        ).model_dump()
+        return detail_payroll
+    except Exception as e:
+        print("Error get detail payroll: \n", e)
+        raise ValueError("Failed to get detail payroll")
+
+
 
 async def get_status_attendance(
   db: Session,

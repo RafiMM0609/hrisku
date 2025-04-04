@@ -187,3 +187,39 @@ class DetailDataAbsensiResponse(BaseModel):
     status: str
     code: int
     message: str
+
+class ListPayroll(BaseModel):
+    """
+    semua data dibuat optional dengan defailt value None atau []
+    """
+    id:Optional[int]=None
+    date:Optional[str]=None # March 2025
+    performance:Optional[str]=None # You doing great 10/10
+    utilization:Optional[str]=None # 100%
+    net_salary:Optional[float]=None # 1.000.000
+class ListPayrollResponse(BaseModel):
+    meta: MetaResponse
+    data: List[ListPayroll]
+    status: str
+    code: int
+    message: str
+
+class DetailPayroll(BaseModel):
+    """
+    semua data dibuat optional dengan defailt value None atau []
+    """
+    date:Optional[str]=None # March 2025
+    client_name:Optional[str]=None # PT. ABC
+    client_address:Optional[str]=None # Jl. ABC No. 1
+    client_code:Optional[str]=None # ABC123
+    outlet_name:Optional[str]=None # Outlet ABC
+    outlet_address:Optional[str]=None # Jl. ABC No. 1
+    outlet_latitude:Optional[float]=None # -6.123456
+    outlet_longitude:Optional[float]=None # 106.123456
+    download_link:Optional[str]=None # https://example.com/download
+class DetailPayrollResponse(BaseModel):
+    meta: MetaResponse
+    data: DetailPayroll
+    status: str
+    code: int
+    message: str

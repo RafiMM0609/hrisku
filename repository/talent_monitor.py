@@ -38,9 +38,52 @@ from schemas.talent_monitor import (
     TimeSheetHistory,
     PerformanceHistory,
     TalentPerformance,
+    ListTalentPayroll,
+    TalentPayroll,
 )
 import os
 import asyncio
+
+async def get_talent_payroll() -> TalentPayroll:
+    """
+    Return payroll data using the TalentPayroll Pydantic model.
+    """
+    try:
+        # Get the current date and time in the specified timezone
+        now = datetime.now(timezone(TZ))
+        month = now.strftime("%m")
+        year = now.strftime("%Y")
+        
+        # Create a unique filename for the payroll file
+        filename = f"payroll_{secrets.token_hex(4)}_{month}_{year}.xlsx"
+        
+        # Define the local path for saving the payroll file
+        local_path = os.path.join(LOCAL_PATH, "payroll", filename)
+        
+        # Generate the download link for the payroll file
+        download_link = generate_link_download(local_path)
+        
+        # Return the TalentPayroll model
+        return TalentPayroll(
+            emp_name=None,  # Placeholder, update if employee name is available
+            emp_code=None,  # Placeholder, update if employee code is available
+            emp_role=None,  # Placeholder, update if employee role is available
+            payroll=[
+                ListTalentPayroll(
+                    month=f"{month}-{year}",
+                    gaji_pokok=0.00,
+                    tunjangan_makan=0.00,
+                    bpjs_kesehatan=0.00,
+                    pajak_pph21=0.00,
+                    bonus=0.00,
+                    agency_fee=0.00,
+                    total=0.00
+                )
+            ]
+        ).model_dump()
+    except Exception as e:
+        print("Error get talent payroll: \n", e)
+        raise ValueError("Failed to get talent payroll")
 
 async def get_talent_performance(
     db:Session,

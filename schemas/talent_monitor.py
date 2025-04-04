@@ -194,3 +194,31 @@ class TalentPerformance(BaseModel):
     role_name: str
     performance: Optional[str]=None
     history: Optional[List[PerformanceHistory]]=None
+
+class ListTalentPayroll(BaseModel):
+    """
+    make it al to optional and give default value None or []
+    """
+    month:Optional[str]=None #March 2025
+    gaji_pokok:Optional[float]=0.00
+    tunjangan_makan:Optional[float]=0.00
+    bpjs_kesehatan:Optional[float]=0.00
+    pajak_pph21:Optional[float]=0.00
+    bonus:Optional[float]=0.00
+    agency_fee:Optional[float]=0.00
+    total:Optional[float]=0.00
+
+class TalentPayroll(BaseModel):
+    """
+    make it al to optional and give default value None or []
+    """
+    emp_name:Optional[str]=None
+    emp_code:Optional[str]=None
+    emp_role:Optional[str]=None
+    payroll:Optional[List[ListTalentPayroll]]=[]
+class TalentPayrollResponse(BaseModel):
+    meta: MetaResponse
+    data: TalentPayroll
+    status: str
+    code: int
+    message: str

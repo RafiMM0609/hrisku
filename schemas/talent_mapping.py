@@ -128,14 +128,14 @@ class RegisTalentRequest(BaseModel):
 
 class EditTalentRequest(BaseModel):
     photo: Optional[str] = None
-    name: str
-    dob: str = "01-12-2004"
-    nik: str
-    email: str
-    phone: str
-    address: str
-    client_id : int
-    outlet_id : int
+    name: str = None
+    dob: str = None
+    nik: str = None
+    email: str = None
+    phone: str = None
+    address: str = None
+    client_id : int = None
+    outlet_id : int = None
     shift: Optional[List[ShiftEdit]]=None
     workdays: Optional[int]=None
     contract: Optional[EditContractManagement]=None
@@ -151,6 +151,7 @@ class ViewPersonalInformation(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     face_id: Optional[str] = None
+    photo: Optional[str] = None
     
 class ViewMappingInformation(BaseModel):
     client_id: Optional[str] = None

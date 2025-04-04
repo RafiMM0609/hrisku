@@ -37,6 +37,7 @@ from schemas.talent_mapping import (
 )
 import os
 import asyncio
+from repository.payroll import add_monthly_salary_emp
 from fastapi.logger import logger  # Add logger for better debugging
 
 async def get_menu_calender(
@@ -175,6 +176,7 @@ async def ViewTalentData(
             User.phone,
             User.address,
             User.photo,
+            User.face_id,
             Role.id.label('role_id'),
             Role.name.label('role_name'),
             Client.id_client.label('client_id'),
@@ -209,7 +211,8 @@ async def ViewTalentData(
                     email=None,
                     phone=None,
                     address=None,
-                    face_id=None
+                    face_id=None,
+                    photo=None,
                 ),
                 mapping=ViewMappingInformation(
                     client_id=None,
@@ -276,7 +279,8 @@ async def ViewTalentData(
             email=data.email,
             phone=data.phone,
             address=data.address,
-            face_id=data.photo  # Assuming photo is used as face_id
+            face_id=generate_link_download(data.face_id) if data.face_id else None,
+            photo=generate_link_download(data.photo) if data.photo else None
         )
 
         mapping_info = ViewMappingInformation(
@@ -544,44 +548,54 @@ async def edit_user_validator(db: Session, payload: EditTalentRequest, id_user:s
 async def edit_talent(
     db: Session,
     id_user: str,
-    user:User,
-    background_tasks:any,
+    user: User,
+    background_tasks: any,
     payload: EditTalentRequest,
     role_id: int = 1,
 ):
     try:
+        # Retrieve the existing user
+        user_exist = db.execute(
+            select(User).filter(User.id_user == id_user).limit(1)
+        ).scalar()
+
+        if not user_exist:
+            raise ValueError("User not found")
+
         # If changing photo
         if payload.photo:
             photo_path = os.path.join("profile", payload.photo.split("/")[-1])
             photo_url = upload_file_from_path_to_minio(minio_path=photo_path, local_path=payload.photo)
             print(photo_path)
-        else:
-            photo_path = None
-
-        #  Data preparation
-        user_exist=db.execute(
-            select(User)
-            .filter(User.id_user==id_user)
-            .limit(1)
-        ).scalar()
+            user_exist.photo = photo_path
 
         # Old email
         old_email = user_exist.email
 
-        user_exist.photo=photo_path
-        user_exist.name=payload.name
-        user_exist.birth_date=datetime.strptime(payload.dob, "%d-%m-%Y").date()
-        user_exist.nik=payload.nik
-        user_exist.outlet_id=payload.outlet_id
-        user_exist.email=payload.email
-        user_exist.phone=payload.phone
-        user_exist.address=payload.address
-        user_exist.client_id=payload.client_id
-        user_exist.updated_by=user.id
+        # Update fields only if payload values are not None
+        if payload.name is not None:
+            user_exist.name = payload.name
+        if payload.dob is not None:
+            user_exist.birth_date = datetime.strptime(payload.dob, "%d-%m-%Y").date()
+        if payload.nik is not None:
+            user_exist.nik = payload.nik
+        if payload.outlet_id is not None:
+            user_exist.outlet_id = payload.outlet_id
+        if payload.email is not None:
+            user_exist.email = payload.email
+        if payload.phone is not None:
+            user_exist.phone = payload.phone
+        if payload.address is not None:
+            user_exist.address = payload.address
+        if payload.client_id is not None:
+            user_exist.client_id = payload.client_id
+
+        user_exist.updated_by = user.id
         db.add(user_exist)
         db.commit()
         db.refresh(user_exist)
-        db.commit()
+
+        # Handle shifts and contracts in background tasks
         if isinstance(payload.shift, (list, tuple)):
             background_tasks.add_task(
                 edit_schedule,
@@ -594,30 +608,36 @@ async def edit_talent(
             )
         if payload.contract:
             background_tasks.add_task(
-                edit_contract,  
+                edit_contract,
                 user.id,
                 user_exist.id,
                 payload.contract,
             )
 
-        # new email
+        # Handle email change and first login password
         new_email = user_exist.email
-
-        # Check if change email and first password still exist
-
-        if old_email != new_email and user_exist.first_login != None:
+        if old_email != new_email and user_exist.first_login is not None:
             await send_first_password_email(
                 email_to=user_exist.email,
                 body={
                     "email": user_exist.email,
-                    "password": user_exist.first_login
-                    }
+                    "password": user_exist.first_login,
+                }
             )
-    except Exception as e:
-        print("Error regis talent : \n", e)
-        raise ValueError("Failed regis talent")
-    
 
+        # Add monthly salary task
+        data_monthly_salary = {
+            "emp_id": user_exist.id,
+            "client_id": user_exist.client_id,
+        }
+        background_tasks.add_task(
+            add_monthly_salary_emp,
+            **data_monthly_salary
+        )
+
+    except Exception as e:
+        print("Error editing talent: \n", e)
+        raise ValueError("Failed to edit talent")
 
 async def edit_contract(user_id:str, emp_id: str, payload: EditContractManagement):
     """

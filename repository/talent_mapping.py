@@ -75,6 +75,8 @@ async def get_menu_calender(
 
         # Map the query results to the DataCalenderWorkarr Pydantic model
         result = []
+        # Count workdays
+        workdays = len(data_shift) if data_shift else 0
         for shift in data_shift:
             current_date = start_date_obj
             while current_date <= end_date_obj:
@@ -91,7 +93,7 @@ async def get_menu_calender(
                             day=shift.day,
                             time_start=start_datetime.strftime("%Y-%m-%d %H:%M"),
                             time_end=end_datetime.strftime("%Y-%m-%d %H:%M"),
-                            workdays=shift.workdays,
+                            workdays=workdays,
                             created_at=shift.created_at.strftime("%Y-%m-%d %H:%M:%S")
                         ).dict()
                     )
@@ -241,6 +243,8 @@ async def ViewTalentData(
         )
 
         shifts = db.execute(shift_query).all()
+        # Calculate workdays as the number of active shifts
+        workdays = len(shifts) if shifts else 0
 
         shift_responses = [
             ShiftResponse(
@@ -291,7 +295,7 @@ async def ViewTalentData(
             outlet_address=data.outlet_address,
             outlet_latitude=data.outlet_latitude,
             outlet_longitude=data.outlet_longitude,
-            workdays=shifts[0].workdays if shifts else None,
+            workdays=workdays,
             workarg=shift_responses,
             contract=contract_management
         )
@@ -891,6 +895,8 @@ async def formating_detail(data: User) -> DetailTalentMapping:
             history=history
         )
 
+    # Count workdays from user_shift
+    workdays = len(data.user_shift) if data.user_shift else 0
     return DetailTalentMapping(
         talent_id=data.id_user,
         photo=data.photo,
@@ -908,7 +914,7 @@ async def formating_detail(data: User) -> DetailTalentMapping:
             id=data.user_outlet.id,
             name=data.user_outlet.name
         ) if data.user_outlet else None,
-        workdays=data.user_shift[0].workdays if data.user_shift else None,
+        workdays=workdays,
         shift=[
             ShiftResponse(
                 shift_id=x.id_shift,

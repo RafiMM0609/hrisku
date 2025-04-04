@@ -39,7 +39,16 @@ class User(Base):
 
     # One  to Many
     client_user = relationship("Client", back_populates="user_client", foreign_keys=[client_id])
-    user_shift = relationship("ShiftSchedule", back_populates="users", foreign_keys=[ShiftSchedule.emp_id])
+    # user_shift = relationship("ShiftSchedule", back_populates="users", foreign_keys=[ShiftSchedule.emp_id])
+    user_shift = relationship(
+    "ShiftSchedule",
+    back_populates="users",
+    foreign_keys=[ShiftSchedule.emp_id],
+    primaryjoin="""and_(
+        ShiftSchedule.emp_id == User.id,
+        ShiftSchedule.isact == True
+        )""",
+    )
     user_outlet = relationship("ClientOutlet", back_populates="outlet_user", foreign_keys=[outlet_id])
     contract_user = relationship("Contract", back_populates="users")
     attendance_user = relationship("Attendance", back_populates="users")

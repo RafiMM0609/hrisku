@@ -1,12 +1,8 @@
 from typing import Optional, List
 from math import ceil
-import secrets
-from sqlalchemy import select, func, distinct, update, or_
-from sqlalchemy.orm import Session, joinedload, subqueryload 
-from core.security import validated_user_password, generate_hash_password
-from core.file import upload_file_to_local, upload_file_from_path_to_minio, generate_link_download
-from models.Role import Role
-from models.Module import Module
+from sqlalchemy import select, func, update, or_
+from sqlalchemy.orm import Session, subqueryload 
+from core.file import upload_file_from_path_to_minio, generate_link_download
 from models.Client import Client
 from models.Tax import Tax
 from models.User import User
@@ -14,12 +10,11 @@ from models.ClientOutlet import ClientOutlet
 from models.Bpjs import Bpjs
 from models.Allowances import Allowances
 from models import SessionLocal
-from datetime import datetime, timedelta
+from datetime import datetime
 from pytz import timezone
-from settings import TZ, LOCAL_PATH
-from fastapi import UploadFile
+from settings import TZ
+from repository.clientbilling import add_client_payment
 import os
-import asyncio
 from math import ceil
 from schemas.client import (
     AddClientRequest,
@@ -424,6 +419,10 @@ async def edit_client(
         background_tasks.add_task(
         add_tax_pph,
         **data_tax_pph
+        )
+        background_tasks.add_task(
+            add_client_payment,
+            client.id,
         )
         return "oke"
     except Exception as e:

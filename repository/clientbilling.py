@@ -270,29 +270,29 @@ async def add_client_payment(client_id):
     db = SessionLocal()
     try:
         # Fetch the end date of the contract from ContractClient
-        contract = (
-            db.query(ContractClient)
-            .filter(ContractClient.client_id == client_id)
-            .order_by(ContractClient.end.desc())
-            .first()
-        )
-        if not contract or not contract.end:
-            raise ValueError("Contract end date not found for the given client.")
+        # contract = (
+        #     db.query(ContractClient)
+        #     .filter(ContractClient.client_id == client_id)
+        #     .order_by(ContractClient.end.desc())
+        #     .first()
+        # )
+        # if not contract or not contract.end:
+        #     raise ValueError("Contract end date not found for the given client.")
 
-        date = contract.end_date  # Use the end date of the contract
+        # date = contract.end_date  # Use the end date of the contract
+        date = datetime.now().date() + timedelta(days=30)  # Generate dummy date 30 days from today
+        
         # Query ClientPayment dengan eager loading untuk menghindari query tambahan
-        query = (
-            select(Client)
+        client = db.query(Client)\
             .options(
-                joinedload(Client.client_tax),
-                joinedload(Client.allowances),
-                joinedload(Client.bpjs),
-                joinedload(Client.user_client),
-            )
-            .filter(Client.isact == True, Client.id == client_id)
-            .limit(1)
-        )
-        client = db.execute(query).scalar_one_or_none()
+            joinedload(Client.client_tax),
+            joinedload(Client.allowances),
+            joinedload(Client.bpjs),
+            joinedload(Client.user_client)
+            )\
+            .filter(Client.isact == True, Client.id == client_id)\
+            .first()
+        # client = db.execute(query).scalar_one_or_none()
         taxes = client.client_tax
         allowances = client.allowances
         bpjs_data = client.bpjs
@@ -326,20 +326,6 @@ async def add_client_payment(client_id):
         total_allowances = sum(allowance.amount or 0 for allowance in allowances)
         total_nominal += total_allowances
 
-        # # Add BPJS
-        # total_bpjs = 0.00
-        # for item in bpjs_data:
-        #     bpjs_amount = (item.percent or 0) * total_gaji_awal
-        #     total_bpjs += bpjs_amount
-        #     total_nominal += bpjs_amount
-
-        # # Add Taxes (percentage-based)
-        # total_taxes = 0
-        # for tax in taxes:
-        #     tax_amount = (tax.percent or 0) * total_gaji_awal
-        #     total_taxes += tax_amount
-        #     total_nominal += tax_amount
-
         # Grand Total
         grand_total = total_nominal
 
@@ -359,7 +345,7 @@ async def add_client_payment(client_id):
                 client_id=client_id,
                 date=date,
                 amount=grand_total,
-                status_id=1,
+                status=1,
             )
             db.add(new_payment)
 
@@ -367,7 +353,7 @@ async def add_client_payment(client_id):
         return "oke"
     except Exception as e:
         print("Error add client payment: \n", e)
-        raise ValueError("Failed to add client payment")
+        raise ValueError("Failed to add client payment", e)
     finally:
         db.close()
 

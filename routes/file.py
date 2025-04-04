@@ -45,10 +45,7 @@ async def upload_file_router(
         path = await upload_file_to_tmp(
             upload_file=file, filename = formated_file_name
         )
-        if isinstance(path, list) and path:
-            return common_response(Created(path[-1]))
-        else:
-            return common_response(BadRequest(message="Path is invalid or empty"))
+        return common_response(Created(path[-1]))
         # return common_response(Created(path[-1]))
     except Exception as e:
         import traceback

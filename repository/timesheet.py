@@ -1,3 +1,4 @@
+import calendar
 from typing import Optional, List, Type
 from math import ceil, radians, sin, cos, sqrt, atan2  # Add these imports for Haversine formula
 import secrets
@@ -299,8 +300,10 @@ async def get_data_menu_timesheet(
         
         # Get the first and last day of current month
         first_day_of_month = today.replace(day=1)
-        last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
-                    else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
+        _, last_day = calendar.monthrange(today.year, today.month)
+        last_day_of_month = today.replace(day=last_day)
+        # last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
+        #             else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
         
         # Get user's shift schedule for today specifically
         user_shift = db.execute(

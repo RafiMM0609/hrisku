@@ -37,7 +37,6 @@ async def add_performance(
         # Get the last day of the current month
         _, last_day = calendar.monthrange(today.year, today.month)
         end_day_of_month = today.replace(day=last_day)
-        end_day_of_month = (first_day_of_month + timedelta(days=31)).replace(day=1) - timedelta(days=1)
 
         # Get data user evaluated
         data_user = db.execute(

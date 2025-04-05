@@ -1,3 +1,4 @@
+import calendar
 from typing import Optional, List, Tuple, Type
 from math import ceil, radians, sin, cos, sqrt, atan2  # Add these imports for Haversine formula
 import secrets
@@ -49,8 +50,6 @@ async def get_list_payroll(
     try:
         # Data preparation
         today = datetime.now(timezone(TZ)).date()
-        end_of_month = (today.replace(day=1) + timedelta(days=31)).replace(day=1) - timedelta(days=1)
-        start_of_month = today.replace(day=1)
 
         # Query payroll data for the user
         query_payroll = (
@@ -210,8 +209,10 @@ def get_range_for_a_month(today:Optional[str]=None)->Tuple[datetime.date, dateti
     
     # get range 1 month
     first_day_of_month = today.replace(day=1)
-    last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
-                else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
+    _, last_day = calendar.monthrange(today.year, today.month)
+    last_day_of_month = today.replace(day=last_day)
+    # last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1, day=1) if first_day_of_month.month < 12 
+    #             else first_day_of_month.replace(year=first_day_of_month.year + 1, month=1, day=1)) - timedelta(days=1)
     
     # Override with parameters if provided
     start_date = first_day_of_month

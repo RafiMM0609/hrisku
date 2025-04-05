@@ -10,8 +10,10 @@ from models.Attendance import Attendance
 from models.ShiftSchedule import ShiftSchedule
 from models.LeaveTable import LeaveTable
 from models.ClientOutlet import ClientOutlet
+from models.Client import Client
 from models.TimeSheet import TimeSheet
 from models.Izin import Izin
+from models.Payroll import Payroll
 from datetime import datetime, timedelta, time
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
@@ -32,50 +34,107 @@ from schemas.mobile import (
     ListPayroll,
     DetailPayroll,
 )
-
+from repository.payroll import add_monthly_salary_emp, generate_file_excel
 from decimal import Decimal
+from core.file import generate_link_download
 
-async def get_list_payroll() -> List[ListPayroll]:
+async def get_list_payroll(
+    db:Session,
+    user:User,
+    background_tasks:any=None,
+) -> List[ListPayroll]:
     """
     Return a list of payroll items, validated against the ListPayroll Pydantic model. Always return with model_dump.
     """
     try:
-        list_payroll = [
-            ListPayroll(
-                id=1,
-                date="March 2025",
-                performance="You are doing great 10/10",
-                utilization="100%",
-                net_salary=float(Decimal("1000000")),  # Convert to float
-            ).model_dump(),
-            ListPayroll(
-                id=2,
-                date="February 2025",
-                performance="Good job 8/10",
-                utilization="80%",
-                net_salary=float(Decimal("800000")),  # Convert to float
-            ).model_dump(),
-        ]
+        # Data preparation
+        today = datetime.now(timezone(TZ)).date()
+        end_of_month = (today.replace(day=1) + timedelta(days=31)).replace(day=1) - timedelta(days=1)
+        start_of_month = today.replace(day=1)
+
+        # Query payroll data for the user
+        query_payroll = (
+            select(Payroll).filter(
+                Payroll.client_id == user.client_id,
+                Payroll.emp_id == user.id,
+                Payroll.isact == True,
+                # Payroll.payment_date.between(start_of_month, end_of_month),
+            )
+            .order_by(Payroll.created_at.desc())
+            .limit(3)
+        )
+        payroll_data = db.execute(query_payroll).scalars().all()
+
+        if not payroll_data:
+            # If no payroll data found, return an empty list
+            return []
+        
+        list_payroll = []
+        for payroll in payroll_data:
+            list_payroll.append(
+                ListPayroll(
+                    id=payroll.id,
+                    date=payroll.payment_date.strftime("%B %Y") if payroll.payment_date else None,
+                    performance="You are doing great 10/10",
+                    utilization="100%",
+                    net_salary=format_to_idr(payroll.net_salary),  # Convert to float
+                ).model_dump()
+            )
+                # Add monthly salary task
+        data_monthly_salary = {
+            "emp_id": user.id,
+            "client_id": user.client_id,
+        }
+        background_tasks.add_task(
+            add_monthly_salary_emp,
+            **data_monthly_salary
+        )
+        background_tasks.add_task(
+            generate_file_excel,
+            **data_monthly_salary
+        )
         return list_payroll
     except Exception as e:
         print("Error get list payroll: \n", e)
         raise ValueError("Failed to get list payroll")
+    
+def format_to_idr(value):
+    return f"Rp {value:,.2f}".replace(',', '.').replace('.', ',', 1)
 
-async def get_detail_payroll() -> DetailPayroll:
+async def get_detail_payroll(
+    db:Session,
+    user:User,
+    payroll_id:str,
+) -> DetailPayroll:
     """
     Return a DetailPayroll object with default values.
     """
     try:
+        # Data preparation
+        data_payroll = db.query(Payroll).filter(
+            Payroll.isact == True,
+            Payroll.id == payroll_id,
+        ).first()
+        data_client = db.query(Client).filter(
+            Client.isact == True,
+            Client.id == user.client_id,
+        ).first()
+        data_outlet = db.query(ClientOutlet).filter(
+            ClientOutlet.isact == True,
+            ClientOutlet.id == user.outlet_id,
+        ).first()
+        if not data_payroll:
+            raise ValueError("Payroll not found")
         detail_payroll = DetailPayroll(
-            date="March 2025",
-            client_name="PT. ABC",
-            client_address="Jl. ABC No. 1",
-            client_code="ABC123",
-            outlet_name="Outlet ABC",
-            outlet_address="Jl. ABC No. 1",
-            outlet_latitude=-6.123456,
-            outlet_longitude=106.123456,
-            download_link="https://example.com/download",
+            date=data_payroll.payment_date.strftime("%B %Y") if data_payroll.payment_date else None,
+            client_name=data_client.name if data_client else None,
+            client_address=data_client.address if data_client else None,
+            client_code=data_client.id_client if data_client else None,
+            outlet_name=data_outlet.name if data_outlet else None,
+            outlet_address=data_outlet.address if data_outlet else None,
+            outlet_latitude=data_outlet.latitude if data_outlet else 0.0,
+            outlet_longitude=data_outlet.longitude if data_outlet else 0.0,
+            download_link=generate_link_download(data_payroll.file) if data_payroll.file else None,
         ).model_dump()
         return detail_payroll
     except Exception as e:

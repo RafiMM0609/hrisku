@@ -37,7 +37,7 @@ from schemas.talent_mapping import (
 )
 import os
 import asyncio
-from repository.payroll import add_monthly_salary_emp
+from repository.payroll import add_monthly_salary_emp, generate_file_excel
 from fastapi.logger import logger  # Add logger for better debugging
 
 async def get_menu_calender(
@@ -648,6 +648,10 @@ async def edit_talent(
         }
         background_tasks.add_task(
             add_monthly_salary_emp,
+            **data_monthly_salary
+        )
+        background_tasks.add_task(
+            generate_file_excel,
             **data_monthly_salary
         )
 

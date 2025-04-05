@@ -196,7 +196,7 @@ class ListPayroll(BaseModel):
     date:Optional[str]=None # March 2025
     performance:Optional[str]=None # You doing great 10/10
     utilization:Optional[str]=None # 100%
-    net_salary:Optional[float]=None # 1.000.000
+    net_salary:Optional[str]=None # 1.000.000
 class ListPayrollResponse(BaseModel):
     meta: MetaResponse
     data: List[ListPayroll]

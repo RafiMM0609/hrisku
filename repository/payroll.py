@@ -1,4 +1,10 @@
+"""
+This file need sets to user KIS (keep it simple) method
+"""
+from openpyxl import load_workbook, Workbook
+from openpyxl.styles import PatternFill, Border, Side, Alignment
 import calendar
+from core.rafiexcel import RafiExcel, blue_fill, yellow_fill
 from models import SessionLocal
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session, joinedload
@@ -8,6 +14,11 @@ from models.Payroll import Payroll
 from models.EmployeeAllowances import EmployeeAllowances
 from models.EmployeeTax import EmployeeTax
 from models.BpjsEmployee import BpjsEmployee
+from models.User import User
+from tempfile import NamedTemporaryFile
+from starlette.datastructures import UploadFile
+from core.file import upload_file, upload_file_to_tmp
+import io
 
 def get_days_in_month(year, month):
     return calendar.monthrange(year, month)[1]
@@ -18,6 +29,154 @@ def get_days_in_month(year, month):
 
 # days_in_month = get_days_in_month(year, month)
 # print(f"Bulan {month}/{year} memiliki {days_in_month} hari.")
+
+
+async def generate_file_excel(emp_id, client_id):
+    '''
+    this function will generate file excel for employee payroll
+    this function will user LocalSession for database connection
+    this function will return file path for the generated file
+    excel will have dynamic heading based on the data on UserAllowence, UserTax, UserBPJS
+    this excel will generated every month for the employee
+    '''
+    db = SessionLocal()
+    try:
+        start_of_this_month = datetime(datetime.now().year, datetime.now().month, 1)
+        end_of_this_month = datetime(datetime.now().year, datetime.now().month, calendar.monthrange(datetime.now().year, datetime.now().month)[1])
+        
+        emp_data = db.query(User)\
+            .filter(
+                User.client_id == client_id,
+                User.id == emp_id,
+                User.isact == True
+            )\
+            .first()
+
+        emp_payroll = db.query(Payroll)\
+            .filter(
+                Payroll.client_id == client_id,
+                Payroll.emp_id == emp_id,
+                Payroll.isact == True,
+                Payroll.payment_date.between(start_of_this_month.date(), end_of_this_month.date()),  # Updated filter
+            )\
+            .first()
+        if not emp_payroll:
+            raise ValueError("Employee contract not found for the given client.")
+        emp_allowances = db.query(EmployeeAllowances)\
+            .filter(
+                EmployeeAllowances.client_id == client_id,
+                EmployeeAllowances.emp_id == emp_id,
+                EmployeeAllowances.isact == True,
+                EmployeeAllowances.created_at.between(start_of_this_month, end_of_this_month),  # Updated filter
+            )\
+            .all()
+        emp_tax = db.query(EmployeeTax)\
+            .filter(
+                EmployeeTax.client_id == client_id,
+                EmployeeTax.emp_id == emp_id,
+                EmployeeTax.isact == True,
+                EmployeeTax.created_at.between(start_of_this_month, end_of_this_month),  # Updated filter
+            )\
+            .all()
+        emp_bpjs = db.query(BpjsEmployee)\
+            .filter(
+                BpjsEmployee.client_id == client_id,
+                BpjsEmployee.emp_id == emp_id,
+                BpjsEmployee.isact == True,
+                BpjsEmployee.created_at.between(start_of_this_month, end_of_this_month),  # Updated filter
+            )\
+            .all()
+        
+        def format_to_idr(value):
+            return f"Rp {value:,.2f}".replace(',', '.').replace('.', ',', 1)
+        #  Create excel data
+        def generate_excel_data(emp_payroll:Payroll, emp_allowances:EmployeeAllowances, emp_tax:EmployeeTax, emp_bpjs:BpjsEmployee):
+            fromated_date_payment = emp_payroll.payment_date.strftime("%d %B %Y")
+
+            help_excel = RafiExcel()
+            wb = Workbook()
+            ws1 = wb.create_sheet(title='Employee Payroll')
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='A1:C1', column='A1',color=blue_fill, title="Name of Employee")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='A2:C2', column='A2',color=blue_fill, title=f"{emp_data.name}")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='A4:J4', column='A4', title="Payslip")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='A5:J5', column='A5', title=f"{fromated_date_payment}")
+
+            # Setup Income
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='A9:C9', column='A9', title="Total Income")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='E9:F9', column='E9', title="IDR")
+
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='A10:C10', column='A10', title="Salary")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='E10:F10', column='E10', title="IDR")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='H10:J10', column='H10', title=f"{format_to_idr(emp_payroll.monthly_paid)}")
+            
+            index_allowance = 1
+            total_allowance = 0.00
+            for item in emp_allowances:
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'A{10+index_allowance}:C{10+index_allowance}', column=f'A{10+index_allowance}', title=item.name)
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'E{10+index_allowance}:F{10+index_allowance}', column=f'E{10+index_allowance}', title="IDR")
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'H{10+index_allowance}:J{10+index_allowance}', column=f'H{10+index_allowance}', title=f"{format_to_idr(item.amount)}")
+                index_allowance += 1
+                total_allowance += item.amount
+            
+            total_income = emp_payroll.monthly_paid + total_allowance
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col='H9:J9', column='H9', title=f'{format_to_idr(total_income)}')
+
+            index_allowance += 1
+            # Setup Deduction
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'A{10+index_allowance}:C{10+index_allowance}', column=f'A{10+index_allowance}', title="Total Deduction")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'E{10+index_allowance}:F{10+index_allowance}', column=f'E{10+index_allowance}', title="IDR")
+
+            total_deduction = 0.00
+            index_deduction = 1
+            for item in emp_bpjs:
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'A{10+index_allowance+index_deduction}:C{10+index_allowance+index_deduction}', column=f'A{10+index_allowance+index_deduction}', title=item.name)
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'E{10+index_allowance+index_deduction}:F{10+index_allowance+index_deduction}', column=f'E{10+index_allowance+index_deduction}', title="IDR")
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'H{10+index_allowance+index_deduction}:J{10+index_allowance+index_deduction}', column=f'H{10+index_allowance+index_deduction}', title=f"{format_to_idr(item.amount)}")
+                index_deduction += 1
+                total_deduction += item.amount
+            index_tax = 1
+            for item in emp_tax:
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'A{10+index_allowance+index_deduction+index_tax}:C{10+index_allowance+index_deduction+index_tax}', column=f'A{10+index_allowance+index_deduction+index_tax}', title=item.name)
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'E{10+index_allowance+index_deduction+index_tax}:F{10+index_allowance+index_deduction+index_tax}', column=f'E{10+index_allowance+index_deduction+index_tax}', title="IDR")
+                ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'H{10+index_allowance+index_deduction+index_tax}:J{10+index_allowance+index_deduction+index_tax}', column=f'H{10+index_allowance+index_deduction+index_tax}', title=f"{format_to_idr(item.amount)}")
+                index_tax += 1
+                total_deduction += item.amount
+
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'H{10+index_allowance}:J{10+index_allowance}', column=f'H{10+index_allowance}', title=f"{format_to_idr(total_deduction)}")
+
+            # Setup Net Salary
+            latest_index = 10 + index_allowance + index_deduction + index_tax
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'A{latest_index}:C{latest_index}', column=f'A{latest_index}', title="Net Salary")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'E{latest_index}:F{latest_index}', column=f'E{latest_index}', title="IDR")
+            ws1 = help_excel.merge_and_center_text(ws=ws1,range_col=f'H{latest_index}:J{latest_index}', column=f'H{latest_index}', title=f"{format_to_idr(emp_payroll.net_salary)}")
+
+
+            # Delete default ws
+            del wb['Sheet']
+            # Save workbook in memory
+            with NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+                wb.save(tmp.name)
+                tmp.seek(0)
+                upload_file_file = UploadFile(filename="data.xlsx", file=io.BytesIO(tmp.read()))
+                return upload_file_file
+        excel_file = generate_excel_data(emp_payroll, emp_allowances, emp_tax, emp_bpjs)
+        formated_date_payment = emp_payroll.payment_date.strftime("%d-%m-%Y")
+        # path = await upload_file_to_tmp(
+        #     upload_file=excel_file, filename = f"Data-Payroll-{emp_data.name}-{formated_date_payment}.xlsx"
+        # )
+        new_path = await upload_file(
+            upload_file=excel_file, path = f"/Payroll/{formated_date_payment}/Data-Payroll-{emp_data.name}-{formated_date_payment}.xlsx"
+        )
+        emp_payroll.file = new_path
+        db.add(emp_payroll)
+        db.commit()
+        return new_path
+    except Exception as e:
+        print("Error generate excel file: \n", e)
+        raise ValueError("Failed to generate excel file: \n", e)
+    finally:
+        db.close()
+
 
 async def add_monthly_salary_emp(emp_id, client_id):
     db = SessionLocal()

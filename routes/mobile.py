@@ -444,6 +444,7 @@ async def list_leave_route(
     },
 )
 async def list_payroll_route(
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
     src: str = None,
@@ -452,7 +453,11 @@ async def list_payroll_route(
     if not user:
         return Unauthorized()
     try:
-        data_payroll = await mobileRepo.get_list_payroll()
+        data_payroll = await mobileRepo.get_list_payroll(
+            db=db,
+            user=user,
+            background_tasks=background_tasks,
+        )
         return common_response(Ok(
             message="Success list payroll",
             data=data_payroll,
@@ -688,7 +693,11 @@ async def detail_payroll_route(
     if not user:
         return Unauthorized()
     try:
-        detail_payroll = await mobileRepo.get_detail_payroll()
+        detail_payroll = await mobileRepo.get_detail_payroll(
+            db=db, 
+            user=user, 
+            payroll_id=id_payroll
+        )
         return common_response(Ok(
             message="Success Data Payroll",
             data=detail_payroll,

@@ -32,6 +32,7 @@ class Payroll(Base):
     created_by = Column(String(36), nullable=True)
     updated_by = Column(ForeignKey("user.id"), nullable=True)
     isact = Column(Boolean, default=True)
+    file = Column(String(255), nullable=True)
     # user_allowence = Column(Integer, ForeignKey("employee_allowances.id"),nullable=True)
     # user_tax = Column(Integer,ForeignKey("employee_tax.id"),  nullable=True)
     # user_bpjs = Column(Integer, ForeignKey("bpjs_employee.id"), nullable=True)

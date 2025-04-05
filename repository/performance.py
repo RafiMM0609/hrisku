@@ -1,3 +1,4 @@
+import calendar
 from typing import Optional
 from math import ceil
 import secrets
@@ -15,38 +16,60 @@ import os
 import asyncio
 from models.Performance import Performance
 from models.User import User
+from models import SessionLocal
 
 async def add_performance(
-    db: Session,  
     emp_id: str,  # User ID
-    data: PerformanceRequest,
 ):
+    """
+    Add performance data for an employee.
+    This function will create a new performance record in the database.
+    It will also check if the employee exists in the database.
+    it will use SessionLocal to handle the database session.
+    this function will close the session after use.
+    """
+    db = SessionLocal()
     try:
         # Get first day of the month
         today = datetime.now().date()
         first_day_of_month = today.replace(day=1)
 
+        # Get the last day of the current month
+        _, last_day = calendar.monthrange(today.year, today.month)
+        end_day_of_month = today.replace(day=last_day)
+        end_day_of_month = (first_day_of_month + timedelta(days=31)).replace(day=1) - timedelta(days=1)
+
         # Get data user evaluated
         data_user = db.execute(
-            select(User.client_id, User.isact)
+            select(User)
             .filter(User.id == emp_id)
-        ).fetchone()
+        ).scalar()
         
         if not data_user:
             raise ValueError(f"User with ID {emp_id} not found")
 
+        # Check if performance data already exists for the employee in the current month
+        existing_performance = db.query(Performance).filter(
+            Performance.emp_id == emp_id,
+            Performance.date >= first_day_of_month,
+            Performance.date <= end_day_of_month,
+            Performance.isact == True
+        ).first()
+
+        if existing_performance:
+            print(f"Performance data for user {emp_id} already exists for this month.")
+
         # Generate model from the request data
         performance_data = Performance(
             emp_id=emp_id,
-            client_id=data_user[0],
-            date=today,
-            softskill=data.softskill,
-            hardskill=data.hardskill,
-            notes=data.note,
+            client_id=data_user.client_id,  # Assuming `client_id` is a valid attribute of `data_user`
+            date=end_day_of_month,
+            softskill=0,
+            hardskill=0,
+            notes="Give feedback",
             created_at=datetime.now(timezone(TZ)),
             created_by=emp_id,
         )
-
         db.add(performance_data)
         db.commit()
         db.refresh(performance_data)
@@ -59,6 +82,8 @@ async def add_performance(
         db.rollback()
         print(f"Error in add_performance: {str(e)}")
         raise ValueError(f"Error in add_performance: {str(e)}")
+    finally:
+        db.close()
 
 async def edit_performance(
     db: Session,
@@ -86,6 +111,7 @@ async def edit_performance(
         performance_data.updated_by = user.id
         
         # Commit changes
+        db.add(performance_data)
         db.commit()
         db.refresh(performance_data)
         return performance_data.id

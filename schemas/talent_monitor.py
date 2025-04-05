@@ -183,6 +183,7 @@ class TalentTimesheetResponse(BaseModel):
     message: str
 
 class PerformanceHistory(BaseModel):
+    id:Optional[int]=None
     date:Optional[str]=None
     softskill:Optional[int]=0
     hardskill:Optional[int]=0

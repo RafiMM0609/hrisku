@@ -43,6 +43,7 @@ from schemas.talent_monitor import (
 )
 import os
 import asyncio
+from repository.performance import add_performance
 
 async def get_talent_payroll() -> TalentPayroll:
     """
@@ -88,6 +89,7 @@ async def get_talent_payroll() -> TalentPayroll:
 async def get_talent_performance(
     db:Session,
     user_id:str,
+    background_tasks: Optional[any] = None,
 )->TalentPerformance:
     try:
         # Fetch user details
@@ -98,11 +100,12 @@ async def get_talent_performance(
         ls_performance = []
         for item in user.performance_user:
             ls_performance.append(PerformanceHistory(
+                id=item.id,
                 date=item.date.strftime("%A, %d %B %Y") if item.date else None,
                 softskill=item.softskill,
                 hardskill=item.hardskill,
-                total_point=item.softskill+item.hardskill,
-                notes=item.note
+                total_point=f"{item.softskill+item.hardskill}/10 ",
+                notes=item.notes
              ))
         
         # Determine performance level based on current month's total points
@@ -126,7 +129,10 @@ async def get_talent_performance(
                 performance_level = "Meet Expectations"
             else:
                 performance_level = "Needs Improvement"
-                
+        background_tasks.add_task(
+            add_performance,
+            emp_id=user.id,
+        )
         return TalentPerformance(
             name=user.name,
             role_name=user.roles[0].name if user.roles else None,

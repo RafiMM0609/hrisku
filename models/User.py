@@ -54,6 +54,13 @@ class User(Base):
     attendance_user = relationship("Attendance", back_populates="users")
     leave_user = relationship("LeaveTable", back_populates="users")
     timesheet_user = relationship("TimeSheet", back_populates="users")
-    performance_user = relationship("Performance", back_populates="users")
+    performance_user = relationship(
+        "Performance",
+        back_populates="users",
+        primaryjoin="""and_(
+            Performance.emp_id == User.id,
+            Performance.isact == True
+        )"""
+    )
     # Many to Many
     roles = relationship("Role", secondary=UserRole, back_populates="users")

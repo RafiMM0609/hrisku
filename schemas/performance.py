@@ -33,8 +33,6 @@ class PerformanceRequest(BaseModel):
     note: Optional[str]=None
 
 class EditPerformanceRequest(BaseModel):
-    id: int
-    emp_id: str
     softskill: Optional[int]=0
     hardskill: Optional[int]=0
     note: Optional[str]=None

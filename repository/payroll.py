@@ -196,6 +196,7 @@ async def add_monthly_salary_emp(emp_id, client_id):
         end_of_year = date(date.today().year, 12, 31)
 
         # Calculate the start and end of the current month
+        
         start_of_month = datetime(datetime.now().year, datetime.now().month, 1)
         end_of_month = datetime(datetime.now().year, datetime.now().month, calendar.monthrange(datetime.now().year, datetime.now().month)[1])
         # Payment_date

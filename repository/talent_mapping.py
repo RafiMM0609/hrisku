@@ -38,6 +38,7 @@ from schemas.talent_mapping import (
 import os
 import asyncio
 from repository.payroll import add_monthly_salary_emp, generate_file_excel
+from repository.attendancesummary import create_update_attendance_summary
 from fastapi.logger import logger  # Add logger for better debugging
 
 async def get_menu_calender(
@@ -271,7 +272,7 @@ async def ViewTalentData(
             contract_management = ContractManagement(
                 start_date=contract_data.start.strftime("%d-%m-%Y") if contract_data.start else None,
                 end_date=contract_data.end.strftime("%d-%m-%Y") if contract_data.end else None,
-                file=contract_data.file
+                file=generate_link_download(contract_data.file) if contract_data.file else None,
             )
 
         personal_info = ViewPersonalInformation(
@@ -655,6 +656,12 @@ async def edit_talent(
             **data_monthly_salary
         )
 
+        # Add attendance summary task
+        background_tasks.add_task(
+            create_update_attendance_summary,
+            **data_monthly_salary
+        )
+
     except Exception as e:
         print("Error editing talent: \n", e)
         raise ValueError("Failed to edit talent")
@@ -671,6 +678,13 @@ async def edit_contract(user_id: str, emp_id: str, payload: EditContractManageme
         
         # Calculate period in months (approximate)
         period = end_date.year  # Simply get the year from the end date
+
+        # handle file contract
+        if payload.file:
+            file_path = os.path.join("contract", payload.file.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=file_path, local_path=payload.file)
+        else:
+            file_path = None
         
         if payload.id:
             # Fetch the existing contract
@@ -688,8 +702,8 @@ async def edit_contract(user_id: str, emp_id: str, payload: EditContractManageme
             existing_contract.start = start_date
             existing_contract.end = end_date
             existing_contract.period = int(period)
-            existing_contract.file = payload.file
-            existing_contract.file_name = payload.file.split("-")[0] if payload.file else None
+            existing_contract.file = file_path
+            existing_contract.file_name = payload.file.split("/")[-1] if payload.file else None
             existing_contract.updated_at = datetime.now(tz=timezone(TZ))
             existing_contract.updated_by = user_id
         else:
@@ -699,8 +713,8 @@ async def edit_contract(user_id: str, emp_id: str, payload: EditContractManageme
                 start=start_date,
                 end=end_date,
                 period=int(period),
-                file=payload.file,
-                file_name=payload.file.split("-")[0] if payload.file else None,
+                file=file_path,
+                file_name=payload.file.split("/")[-1] if payload.file else None,
                 created_at=datetime.now(tz=timezone(TZ)),
                 updated_by=user_id,
                 isact=True
@@ -713,7 +727,7 @@ async def edit_contract(user_id: str, emp_id: str, payload: EditContractManageme
     except Exception as e:
         db.rollback()
         print(f"Error editing/creating contract: {e}")
-        raise ValueError("Failed to edit or create contract")
+        raise ValueError("Failed to edit or create contract", e)
     finally:
         db.close()  # Ensure the connection is closed
 
@@ -887,7 +901,7 @@ async def formating_detail(data: User) -> DetailTalentMapping:
             HistoryContract(
                 start_date=h.start.strftime("%d-%m-%Y") if h.start else None,
                 end_date=h.end.strftime("%d-%m-%Y") if h.end else None,
-                file=h.file,
+                file=generate_link_download(h.file) if h.file else None,
                 file_name=h.file_name
             ) for h in (data.contract_user or [])
         ]
@@ -895,7 +909,7 @@ async def formating_detail(data: User) -> DetailTalentMapping:
             id=contract.id,
             start_date=contract.start.strftime("%d-%m-%Y") if contract.start else None,
             end_date=contract.end.strftime("%d-%m-%Y") if contract.end else None,
-            file=contract.file,
+            file=generate_link_download(contract.file),
             history=history
         )
 
@@ -949,7 +963,7 @@ async def get_contract_history(
             HistoryContract(
                 start_date=d.start.strftime("%d-%m-%Y") if d.start else None,
                 end_date=d.end.strftime("%d-%m-%Y") if d.end else None,
-                file=d.file,
+                file=generate_link_download(d.file) if d.file else None,
                 file_name=d.file_name
             ).dict() for d in data
         ]

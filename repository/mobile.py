@@ -36,6 +36,7 @@ from schemas.mobile import (
     DetailPayroll,
 )
 from repository.payroll import add_monthly_salary_emp, generate_file_excel
+from repository.attendancesummary import create_update_attendance_summary
 from decimal import Decimal
 from core.file import generate_link_download
 
@@ -716,6 +717,28 @@ async def add_checkout(
         checkout.updated_at = datetime.now(timezone(TZ))
         db.add(checkout)
         db.commit()
+
+        # Add summary and update payroll
+                # Add monthly salary task
+        data_monthly_salary = {
+            "emp_id": user.id,
+            "client_id": user.client_id,
+        }
+        background_tasks.add_task(
+            add_monthly_salary_emp,
+            **data_monthly_salary
+        )
+        background_tasks.add_task(
+            generate_file_excel,
+            **data_monthly_salary
+        )
+
+        # Add attendance summary task
+        background_tasks.add_task(
+            create_update_attendance_summary,
+            **data_monthly_salary
+        )
+
         return "OK"
         
     except Exception as e:

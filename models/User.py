@@ -10,6 +10,7 @@ from models.Performance import Performance
 from sqlalchemy.future import select
 from datetime import date, timedelta
 from sqlalchemy.sql import func
+from models.AttendanceSummary import AttendanceSummary
 
 class User(Base):
     __tablename__ = "user"
@@ -54,6 +55,14 @@ class User(Base):
     attendance_user = relationship("Attendance", back_populates="users")
     leave_user = relationship("LeaveTable", back_populates="users")
     timesheet_user = relationship("TimeSheet", back_populates="users")
+    sumat_user = relationship(
+        "AttendanceSummary",
+        back_populates="users",
+        primaryjoin="""and_(
+            AttendanceSummary.emp_id == User.id,
+            AttendanceSummary.isact == True
+        )"""
+    )
     performance_user = relationship(
         "Performance",
         back_populates="users",

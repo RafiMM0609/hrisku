@@ -728,6 +728,7 @@ async def formating_client(data):
         result.append({
             "id": item.id_client,
             "name": item.name,
+            "photo":item.photo,
             "address": item.address,
             "payment_date": str(item.due_date_payment),
             "outlet": [
@@ -931,6 +932,7 @@ def to_pydantic(result: Client) -> DataDetailClientSignature:
     # Combine into DataDetailClientSignature
     return DataDetailClientSignature(
         name=result.name,
+        photo=generate_link_download(result.photo) if result.photo else None,
         address=result.address,
         id_client=result.id_client,
         outlet=outlets,

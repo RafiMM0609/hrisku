@@ -833,8 +833,8 @@ async def list_talent(
         # If admin hanya client dia
         if user:
             if user.roles[0].id==2:
-                query = query.filter(or_(User.client_id == user.client_id, User.client_id == None))
-                query_count = query_count.filter(or_(User.client_id == user.client_id, User.client_id == None))
+                query = query.filter(or_(User.client_id == user.client_id))
+                query_count = query_count.filter(or_(User.client_id == user.client_id))
         # Jika ada pencarian (src), cari di nama user & nama client
         if src:
             query = (query.filter(

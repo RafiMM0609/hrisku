@@ -24,7 +24,8 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta, time, date
 
 async def verify_billing_action(
-        
+    payment_id: str,
+    db: Session,
 ):
     """
     this function is used to verify billing action
@@ -34,13 +35,14 @@ async def verify_billing_action(
     use kiss method
     """
     try: 
-        db = SessionLocal()
-        payment = db.query(ClientPayment).filter(ClientPayment.id == id).first()
+        payment = db.query(ClientPayment).filter(ClientPayment.id == payment_id).first()
         if not payment:
             return False
         payment.status = 1 if payment.status == 0 else 0
+
+        db.add(payment)
         db.commit()
-        return True
+        return "oke"
     except Exception as e:
         print(f"Failed to verify billing action: {str(e)}")
         raise ValueError("Failed to verify billing action")
@@ -277,10 +279,10 @@ async def list_detail_cb(
                 amount=item.amount,
                 total_talent= len(item.clients.user_client) if hasattr(item, 'clients') else 0,
                 status=Organization(
-                    id=item.status_id if hasattr(item, 'status_id') else 0, 
+                    id=item.status if hasattr(item, 'status') else 0, 
                     name=item.status_payment.name if item.status_payment else None),
                 evidence_payment=generate_link_download(item.evidence_payment) if hasattr(item, 'evidence_payment') else "",
-                verify=item.status_id == 1 if hasattr(item, 'status_id') else False
+                verify=item.status == 1 if hasattr(item, 'status') else False
             ).model_dump())
         
         return (result, num_data, num_page)

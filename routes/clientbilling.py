@@ -146,3 +146,34 @@ async def list_detail_cb_route(
             )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+
+@router.put("/verify-billing/{id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_detail_cb_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):  
+    """
+    id nya diisi id yang uuid itu aja bang punya nya list detail 
+    """
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        await ClientBilRepo.verify_billing_action(
+            db=db,
+            payment_id=id,
+        )
+        return common_response(
+            CudResponse(
+                message="Succes Edit client billing",
+            )
+            )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))

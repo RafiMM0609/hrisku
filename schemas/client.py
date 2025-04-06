@@ -110,6 +110,7 @@ class ListAllClient(BaseModel):
     name: str
     address: str
     outlet: Optional[List[Organization]]=None
+    photo: Optional[str]=None
 
 
 class ListClientResponse(BaseModel):
@@ -180,6 +181,7 @@ class EditOutletRequest(BaseModel):
 
 class DataDetailClientSignature(BaseModel):
     name:str
+    photo:Optional[str]=None
     address:Optional[str]=None
     id_client:str
     outlet:List[OutletList]

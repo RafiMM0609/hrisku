@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, Request
 # import logging
 import time
@@ -22,6 +23,8 @@ from routes.talent_mapping import router as TalentMappingRouter
 from routes.talent_monitor import router as TalentMonitorRouter
 from routes.mobile import router as MobileRouter
 from routes.outlet import router as OutletRouter
+from routes.nationalholiday import router as NationalHolidayRouter
+from routes.permission import router as PermissionRouter
 
 if SENTRY_DSN != None:  # NOQA
     sentry_sdk.init(
@@ -85,6 +88,8 @@ app.include_router(TalentMonitorRouter, prefix="/talent-monitor")
 app.include_router(FileRouter, prefix="/file")
 app.include_router(OutletRouter, prefix="/outlet")
 app.include_router(MobileRouter, prefix="/mobile")
+app.include_router(NationalHolidayRouter, prefix="/holiday")
+app.include_router(PermissionRouter, prefix="/permission")
 
 @app.get("/")
 async def read_root():  # <-- Perbaikan di sini

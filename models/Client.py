@@ -25,6 +25,7 @@ from models.EmployeeAllowances import EmployeeAllowances
 from models.BpjsEmployee import BpjsEmployee
 from models.EmployeeTax import EmployeeTax
 from models.AttendanceSummary import AttendanceSummary
+from models.NationalHoliday import NationalHoliday
 
 class Client(Base):
     __tablename__ = "client"
@@ -62,6 +63,9 @@ class Client(Base):
     client_payments = relationship("ClientPayment", back_populates="clients")
     sumat_client = relationship("AttendanceSummary", back_populates="clients")
     client_payroll = relationship("Payroll", back_populates="clients")
+    client_holiday = relationship("NationalHoliday", back_populates="clients", 
+                                   primaryjoin="and_(NationalHoliday.client_id == Client.id, NationalHoliday.isact == True)", 
+                                   order_by="NationalHoliday.created_at")
     contract_clients = relationship("ContractClient", back_populates="clients", 
                                     primaryjoin="and_(ContractClient.client_id == Client.id, ContractClient.isact == True)", 
                                     order_by="ContractClient.created_at")

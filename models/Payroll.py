@@ -33,14 +33,8 @@ class Payroll(Base):
     updated_by = Column(ForeignKey("user.id"), nullable=True)
     isact = Column(Boolean, default=True)
     file = Column(String(255), nullable=True)
-    # user_allowence = Column(Integer, ForeignKey("employee_allowances.id"),nullable=True)
-    # user_tax = Column(Integer,ForeignKey("employee_tax.id"),  nullable=True)
-    # user_bpjs = Column(Integer, ForeignKey("bpjs_employee.id"), nullable=True)
 
     # Many to One
     clients = relationship("Client", back_populates="client_payroll", foreign_keys=[client_id])
-    # user_allowances = relationship("EmployeeAllowances", back_populates="user_payroll", foreign_keys=[user_allowence])
-    # user_to_bpjs = relationship("BpjsEmployee", back_populates="user_payroll", foreign_keys=[user_bpjs])
-    # user_to_tax = relationship("EmployeeTax", back_populates="user_payroll", foreign_keys=[user_tax])
 
 

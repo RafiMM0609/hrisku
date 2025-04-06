@@ -167,7 +167,8 @@ async def login(
 
         user = is_valid
         token = await generate_jwt_token_from_user(user=user)
-        await authRepo.create_user_session(db=db, user_id=user.id, token=token)
+        if not user.first_login:
+            await authRepo.create_user_session(db=db, user_id=user.id, token=token)
 
         # Extract username and password from the request
         username = request.email

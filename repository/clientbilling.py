@@ -23,6 +23,29 @@ from schemas.clientbilling import (
 from pydantic import BaseModel
 from datetime import datetime, timedelta, time, date
 
+async def verify_billing_action(
+        
+):
+    """
+    this function is used to verify billing action
+    use table ClientPayment
+    set status to 1 if payment is verified
+    set status to 0 if payment is not verified
+    use kiss method
+    """
+    try: 
+        db = SessionLocal()
+        payment = db.query(ClientPayment).filter(ClientPayment.id == id).first()
+        if not payment:
+            return False
+        payment.status = 1 if payment.status == 0 else 0
+        db.commit()
+        return True
+    except Exception as e:
+        print(f"Failed to verify billing action: {str(e)}")
+        raise ValueError("Failed to verify billing action")
+    
+
 async def list_billing_action(
     db: Session,
     id: str,

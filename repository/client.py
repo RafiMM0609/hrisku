@@ -15,6 +15,7 @@ from datetime import datetime
 from pytz import timezone
 from settings import TZ
 from repository.clientbilling import add_client_payment
+from repository.nationalholiday import create_update_national_holiday
 import os
 from math import ceil
 from schemas.client import (
@@ -520,6 +521,12 @@ async def edit_client(
         background_tasks.add_task(
             add_client_payment,
             client.id,
+        )
+
+        # Refresh national holiday
+        background_tasks.add_task(
+            create_update_national_holiday,
+            client.id
         )
         return "oke"
     except Exception as e:

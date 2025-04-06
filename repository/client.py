@@ -196,12 +196,20 @@ async def add_client_contract(payload: AddClientRequest, client_id):
     """
     db = SessionLocal()
     try:
+
+        # handle file contract
+        if payload.file_contract:
+            file_path = os.path.join("contract_client", payload.file_contract.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=file_path, local_path=payload.file_contract)
+        else:
+            file_path = None
+
         # Dynamically assign client_id and other fields from payload
         new_client_contract = ContractClient(
             client_id=client_id,  # Integer, required
             start=datetime.strptime(payload.start_contract, "%d-%m-%Y").date() if payload.start_contract else None,  # Date
             end=datetime.strptime(payload.end_contract, "%d-%m-%Y").date() if payload.end_contract else None,  # Date
-            file_contract=payload.file_contract,  # String (max length 255), optional
+            file_contract=file_path,  # String (max length 255), optional
             created_at=datetime.now(tz=timezone(TZ)),  # DateTime with timezone
         )
         db.add(new_client_contract)
@@ -223,6 +231,14 @@ async def update_client_contract(payload: EditClientRequest, client_id):
     """
     db = SessionLocal()
     try:
+
+        # handle file contract
+        if payload.file_contract:
+            file_path = os.path.join("contract_client", payload.file_contract.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=file_path, local_path=payload.file_contract)
+        else:
+            file_path = None
+
         if payload.id_contract:
             # Update existing contract
             client_contract = db.query(ContractClient).filter(ContractClient.id == payload.id_contract).first()
@@ -230,7 +246,7 @@ async def update_client_contract(payload: EditClientRequest, client_id):
                 raise ValueError("Contract not found")
             client_contract.start = datetime.strptime(payload.start_contract, "%d-%m-%Y").date() if payload.start_contract else None
             client_contract.end = datetime.strptime(payload.end_contract, "%d-%m-%Y").date() if payload.end_contract else None
-            client_contract.file_contract = payload.file_contract
+            client_contract.file_contract = file_path
             db.commit()
             return {"success": True, "data": client_contract}
         else:
@@ -239,7 +255,7 @@ async def update_client_contract(payload: EditClientRequest, client_id):
                 client_id=client_id,
                 start=datetime.strptime(payload.start_contract, "%d-%m-%Y").date() if payload.start_contract else None,
                 end=datetime.strptime(payload.end_contract, "%d-%m-%Y").date() if payload.end_contract else None,
-                file_contract=payload.file_contract,
+                file_contract=file_path,
                 created_at=datetime.now(tz=timezone(TZ)),
             )
             db.add(new_client_contract)

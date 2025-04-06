@@ -435,12 +435,19 @@ async def add_contract(emp_id: str, payload: ContractManagement):
         # Simply get the year from the end date
         period = end_date.year
         
+        # handle file contract
+        if payload.file:
+            file_path = os.path.join("contract", payload.file.split("/")[-1])
+            photo_url = upload_file_from_path_to_minio(minio_path=file_path, local_path=payload.file)
+        else:
+            file_path = None
+
         new_contract = Contract(
             emp_id=emp_id,
             start=start_date,
             end=end_date,
             period=int(period),
-            file=payload.file,
+            file=file_path,
             file_name=payload.file.split("-")[0],
             created_at=datetime.now(tz=timezone(TZ)),
             isact=True

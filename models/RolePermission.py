@@ -31,5 +31,11 @@ RolePermission = Table(
         Boolean,
         nullable=False,
         server_default="true"
+    ),
+    Column(
+        "isdel",
+        Boolean,
+        nullable=False,
+        server_default="false"
     )
 )

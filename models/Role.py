@@ -1,8 +1,8 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean, and_
 from sqlalchemy.orm import relationship
 from models import Base
 from models.UserRole import UserRole
-from models.RolePermission import RolePermission
+from models.RolePermission import RolePermission  # Ensure this is correctly imported
 
 
 class Role(Base):
@@ -20,5 +20,11 @@ class Role(Base):
     # Many to Many
     users = relationship("User", secondary=UserRole, back_populates="roles")
     permissions = relationship(
-        "Permission", secondary=RolePermission, back_populates="roles"
+        "Permission",
+        secondary=RolePermission,
+        primaryjoin=and_(
+            RolePermission.c.role_id == id,
+            RolePermission.c.isact == True
+        ),
+        back_populates="roles"
     )

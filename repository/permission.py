@@ -44,8 +44,7 @@ async def get_data_permission_table(
             .join(Module, Permission.module_id == Module.id)
             .filter(
                 RolePermission.c.role_id == role_id,
-                RolePermission.c.isact == True,
-                Permission.isact == True,
+                RolePermission.c.isdel == False,
             )
             .order_by(Module.name)  # Order by module name for better grouping
         )

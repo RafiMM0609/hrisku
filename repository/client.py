@@ -16,6 +16,7 @@ from pytz import timezone
 from settings import TZ
 from repository.clientbilling import add_client_payment
 from repository.nationalholiday import create_update_national_holiday
+from repository.clientbillingreport import generate_client_billing_report, generate_employee_attendance
 import os
 from math import ceil
 from schemas.client import (
@@ -542,6 +543,17 @@ async def edit_client(
         # Refresh national holiday
         background_tasks.add_task(
             create_update_national_holiday,
+            client.id
+        )
+
+        # Generate excel client payment report
+        background_tasks.add_task(
+            generate_client_billing_report,
+            client.id
+        )
+
+        background_tasks.add_task(
+            generate_employee_attendance,
             client.id
         )
         return "oke"

@@ -5,11 +5,11 @@ RafiExcel Class for Excel Manipulation
 from typing import List, Optional
 from io import BytesIO
 from openpyxl import load_workbook, Workbook
-from openpyxl.styles import PatternFill, Border, Side, Alignment
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
+from openpyxl.drawing.image import Image
 from starlette.datastructures import UploadFile
 from tempfile import NamedTemporaryFile
 import io
-from openpyxl.drawing.image import Image
 from PIL import Image as PILImage
 import os
 from core.file import download_file_to_bytes
@@ -213,6 +213,18 @@ class RafiExcel:
     ):
         ws[column] = text
         ws[column].alignment = Alignment(horizontal='center', wrapText=True, vertical='center')
+        return ws
+    
+    def text_center_bold(
+        self, 
+        ws: any,
+        text: str,
+        column: str,
+        wrap_text: Optional[bool] = True
+    ):
+        ws[column] = text
+        ws[column].alignment = Alignment(horizontal='center', wrapText=wrap_text, vertical='center')
+        ws[column].font = Font(bold=True)
         return ws
     
     def text_left(

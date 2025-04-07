@@ -14,6 +14,9 @@ from models.Attendance import Attendance
 from models.Payroll import Payroll
 from models.Client import Client
 from models import SessionLocal
+from models.NationalHoliday import NationalHoliday
+from models.ShiftSchedule import ShiftSchedule
+from models.LeaveTable import LeaveTable
 from datetime import date, datetime, timedelta
 from settings import TZ
 import calendar
@@ -238,6 +241,38 @@ async def generate_employee_attendance(id_client: int):
             Attendance.isact == True,
         ).order_by(Attendance.date).all()
 
+        # Get national holidays for the client
+        national_holidays = db.query(NationalHoliday).filter(
+            NationalHoliday.client_id == id_client,
+            NationalHoliday.date >= start_periode,
+            NationalHoliday.date <= end_periode,
+            NationalHoliday.isact == True
+        ).all()
+        holiday_dates = {holiday.date.strftime('%Y-%m-%d') for holiday in national_holidays}
+
+        # Get shift schedules for the client
+        shift_schedules = db.query(ShiftSchedule).filter(
+            ShiftSchedule.client_id == id_client,
+            ShiftSchedule.isact == True
+        ).all()
+        employee_shifts = {}
+        for shift in shift_schedules:
+            if shift.emp_id not in employee_shifts:
+                employee_shifts[shift.emp_id] = set()
+            employee_shifts[shift.emp_id].add(shift.day)
+
+        # Get leave data for employees
+        leave_data = db.query(LeaveTable).filter(
+            LeaveTable.isact == True,
+            LeaveTable.start_date <= end_periode,
+            LeaveTable.end_date >= start_periode
+        ).all()
+        employee_leaves = {}
+        for leave in leave_data:
+            if leave.emp_id not in employee_leaves:
+                employee_leaves[leave.emp_id] = []
+            employee_leaves[leave.emp_id].append((leave.start_date, leave.end_date))
+
         # Group attendance by date
         attendance_by_date = {}
         for record in attendance:
@@ -246,27 +281,41 @@ async def generate_employee_attendance(id_client: int):
                 attendance_by_date[date_key] = []
             attendance_by_date[date_key].append(record)
 
-        # Create day and date headers using the calendar library
-        day_date_header = []
-        current_date = start_periode
-        while current_date <= end_periode:
-            day_name = calendar.day_name[current_date.weekday()][:3]  # Shortened day name (Mon, Tue, etc.)
-            day_date = f"{day_name}\n{current_date.day}"
-            day_date_header.append(day_date)
-            current_date += timedelta(days=1)
-
         # Generate Excel report
         wb = Workbook()
         ws1 = wb.create_sheet(title='Attendance', index=0)
 
-        # Create headers
-        ws1 = rafi_excel.merge_and_center_text(column='A1', range_col='A1:C1', ws=ws1, title=client.name)
-        ws1 = rafi_excel.merge_and_center_text(column='B3', range_col='B3:F3', ws=ws1, title="Employee Attendance Report")
-        ws1 = rafi_excel.merge_and_center_text(column='B4', range_col='B4:F4', ws=ws1, title=f"Period: {start_periode.strftime('%d %B %Y')} - {end_periode.strftime('%d %B %Y')}")
+        # Create day, date, and month headers using the calendar library
+        day_date_header = []
+        current_date = start_periode
+        previous_month = None
+        month_start_col = 3  # Starting column for the first month
 
-        # Set column headers
-        ws1.cell(row=6, column=1).value = "No"
-        ws1.cell(row=6, column=2).value = "Employee Name"
+        while current_date <= end_periode:
+            day_name = calendar.day_name[current_date.weekday()][:3]  # Shortened day name (Mon, Tue, etc.)
+            day_date = f"{day_name}\n{current_date.day}"
+            day_date_header.append(day_date)
+
+            # Check if the month has changed
+            if previous_month != current_date.month:
+                if previous_month is not None:
+                    # Merge cells for the previous month
+                    ws1.merge_cells(start_row=5, start_column=month_start_col, end_row=5, end_column=len(day_date_header) + 2 - 1)
+                    ws1.cell(row=5, column=month_start_col).value = previous_month_name
+                    ws1.cell(row=5, column=month_start_col).alignment = Alignment(horizontal='center', vertical='center')
+
+                # Update month tracking
+                previous_month = current_date.month
+                previous_month_name = current_date.strftime('%B')
+                month_start_col = len(day_date_header) + 2
+
+            current_date += timedelta(days=1)
+
+        # Merge cells for the last month
+        if previous_month is not None:
+            ws1.merge_cells(start_row=5, start_column=month_start_col, end_row=5, end_column=len(day_date_header) + 2)
+            ws1.cell(row=5, column=month_start_col).value = previous_month_name
+            ws1.cell(row=5, column=month_start_col).alignment = Alignment(horizontal='center', vertical='center')
 
         # Add day/date headers
         for idx, day_date in enumerate(day_date_header):
@@ -303,8 +352,23 @@ async def generate_employee_attendance(id_client: int):
                 date_key = current_date.strftime('%Y-%m-%d')
                 attendance_status = ''
 
+                # Check if the date is a national holiday
+                if date_key in holiday_dates:
+                    attendance_status = 'H'  # Holiday
+
+                # Check if the employee has a shift on this day
+                elif employee_id in employee_shifts and current_date.strftime('%A') not in employee_shifts[employee_id]:
+                    attendance_status = 'H'  # No shift
+
+                # Check if the employee is on leave
+                elif employee_id in employee_leaves:
+                    for leave_start, leave_end in employee_leaves[employee_id]:
+                        if leave_start <= current_date <= leave_end:
+                            attendance_status = 'CT'  # Leave (Cuti)
+                            break
+
                 # Check if employee has attendance on this date
-                if date_key in attendance_by_date:
+                elif date_key in attendance_by_date:
                     for record in attendance_by_date[date_key]:
                         if record.emp_id == employee_id:
                             attendance_status = 'P'  # Present
@@ -315,8 +379,12 @@ async def generate_employee_attendance(id_client: int):
                 if not attendance_status and current_date.weekday() < 5:  # 0-4 is Monday to Friday
                     attendance_status = 'A'  # Absent
 
-                # Weekend gets special marking
-                if not attendance_status and current_date.weekday() >= 5:  # 5-6 is Saturday and Sunday
+                # Mark Saturday as 'H' (Holiday)
+                if not attendance_status and current_date.weekday() == 5:  # 5 is Saturday
+                    attendance_status = 'H'  # Holiday
+
+                # Mark Sunday as 'W' (Weekend)
+                if not attendance_status and current_date.weekday() == 6:  # 6 is Sunday
                     attendance_status = 'W'  # Weekend
 
                 ws1.cell(row=row, column=col_idx).value = attendance_status
@@ -357,7 +425,7 @@ async def generate_employee_attendance(id_client: int):
             new_path = await upload_file(
                 upload_file=upload_file_file, path=f"/Client_Payment/{formated_date_payment}/Employee_Attendance.xlsx"
             )
-
+        print("Done generating attendance report")
         return new_path
 
     except Exception as e:

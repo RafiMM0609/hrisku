@@ -148,6 +148,7 @@ class LeaveSubmission(BaseModel):
     evidence: Optional[str] = None
     file_name: Optional[str] = None
     status: Optional[Organization] = None
+    isedit: Optional[bool] = None
 
 class TalentAttendance(BaseModel):
     name: str

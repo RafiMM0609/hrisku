@@ -78,6 +78,7 @@ async def get_national_holiday(
             db,
             user
         )
+        
         return common_response(Ok(
             message="Success get data",
             data=data
@@ -101,21 +102,21 @@ async def edit_data_holiday(
     token: str = Depends(oauth2_scheme)
 ):
     """
-    Client id tolong diisi pake id client yang angka ya, formatnya string biar enak.
+    Id diisi id holiday yak
     """
     try:
         user = get_user_from_jwt_token(db, token)
         if not user:
             return Unauthorized()
 
-        token = await NationalHolidayRepo.edit_national_holiday(
+        await NationalHolidayRepo.edit_national_holiday(
             db=db, 
             payload=request,
             id=id,
             user=user,
             )
         return common_response(
-            Ok(
+            CudResponse(
                 message="Success edit data"
             )
         )
@@ -131,8 +132,7 @@ async def edit_data_holiday(
     },
 )
 async def add_data_holiday(
-    client_id: str,
-    request: DataHolidayRequest,
+    request: DataHolidayAddRequest,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -144,13 +144,13 @@ async def add_data_holiday(
         if not user:
             return Unauthorized()
 
-        token = await NationalHolidayRepo.create_data_national_holiday(
+        await NationalHolidayRepo.create_data_national_holiday(
             db=db, 
             payload=request,
-            client_id=client_id,
+            user=user
             )
         return common_response(
-            Ok(
+            CudResponse(
                 message="Success add data"
             )
         )
@@ -171,7 +171,7 @@ async def delete_data_holiday(
     token: str = Depends(oauth2_scheme)
 ):
     """
-    Client id tolong diisi pake id client yang angka ya, formatnya string biar enak.
+    Id diisi id holiday yak
     """
     try:
         user = get_user_from_jwt_token(db, token)
@@ -181,10 +181,46 @@ async def delete_data_holiday(
         await NationalHolidayRepo.delete_data_national_holiday(
             db=db,
             national_holiday_id=id,
+            user=user,
         )
         return common_response(
-            Ok(
+            CudResponse(
                 message="Success delete data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.get(
+    "/{id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def get_data_holiday(
+    id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Id diisi id holiday yak
+    """
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return Unauthorized()
+
+        holiday = await NationalHolidayRepo.get_data_national_holiday_by_id(
+            db=db,
+            national_holiday_id=id,
+            user=user,
+        )
+        return common_response(
+            CudResponse(
+                message="Success get data",
+                data=holiday
             )
         )
     except Exception as e:

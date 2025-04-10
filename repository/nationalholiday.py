@@ -168,7 +168,7 @@ async def create_update_national_holiday_default(
 async def create_data_national_holiday(
     db: Session,
     payload: DataHolidayAddRequest,
-    client_id: str,
+    user: User,
 ):
     
     """
@@ -180,7 +180,7 @@ async def create_data_national_holiday(
             date=datetime.strptime(payload.date, "%Y-%m-%d").date(),
             note=payload.note or "National Holiday",
             is_national=payload.is_national if payload.is_national is not None else True,
-            client_id=client_id,
+            client_id=user.client_id,
             created_at=datetime.now(),
         )
         db.add(new_holiday)
@@ -193,6 +193,7 @@ async def create_data_national_holiday(
 async def delete_data_national_holiday(
     db: Session,
     national_holiday_id: int,
+    user: User,
 ):
     """
     This function is used to delete a national holiday record.
@@ -209,6 +210,7 @@ async def delete_data_national_holiday(
 
         # Mark the record as inactive (soft delete)
         existing_holiday.isact = False
+        existing_holiday.updated_at = datetime.now()
         db.add(existing_holiday)
         db.commit()
         return "oke"
@@ -218,6 +220,40 @@ async def delete_data_national_holiday(
         print(f"Error in delete_data_national_holiday: {e}")
         raise ValueError(f"Error in delete_data_national_holiday: {e}")
 
+
+async def get_data_national_holiday_by_id(
+    db: Session,
+    national_holiday_id: str,
+    user: User,
+) -> DataNationalHoliday:
+    """
+    This function is used to get data national holiday filtered by client_id.
+    This function will return a list of national holiday data.
+    This function needs to be fast and efficient.
+    """
+    try:
+        query= db.query(NationalHoliday).filter(
+            NationalHoliday.client_id == user.client_id,
+            NationalHoliday.isact == True,
+            NationalHoliday.id == national_holiday_id
+        )
+        national_holidays = query.first()
+        if not national_holidays:
+            return DataNationalHoliday().model_dump()
+        else:
+            result = DataNationalHoliday(
+                id=national_holidays.id,
+                name=national_holidays.name,
+                date=national_holidays.date.strftime("%Y-%m-%d") if national_holidays.date else None,
+                note=national_holidays.note,
+                is_national=national_holidays.is_national,
+            ).model_dump()
+            return result
+    except ValueError as ve:    
+        raise ve
+    except Exception as e:
+        print(f"Error in get_data_national_holiday_by_id: {e}")
+        raise ValueError(f"Error in get_data_national_holiday_by_id")
 
 async def get_data_national_holiday(
     db:Session,
@@ -276,59 +312,6 @@ async def get_data_national_holiday(
     except Exception as e:
         print(f"Error in get_data_national_holiday: {e}")
         raise ValueError(f"Error in get_data_national_holiday")
-
-async def add_national_holiday(
-    payload: DataHolidayRequest,
-    client_id: int,
-    user: User,
-):
-    """
-    This function is used to add or update national holiday data.
-    If the `id` is provided, it updates the existing record.
-    Otherwise, it creates a new record.
-    """
-    db: Session = SessionLocal()
-    try:
-        # Check if the holiday already exists using the provided `id`
-        existing_holiday = None
-        if payload.id:
-            existing_holiday = db.query(NationalHoliday).filter(
-                NationalHoliday.id == payload.id,
-                NationalHoliday.client_id == client_id,
-            ).first()
-
-        if existing_holiday:
-            # Update the existing holiday record
-            existing_holiday.name = payload.name or existing_holiday.name
-            existing_holiday.date = datetime.strptime(payload.date, "%Y-%m-%d").date() if payload.date else existing_holiday.date
-            existing_holiday.note = payload.note or existing_holiday.note
-            existing_holiday.is_national = payload.is_national if payload.is_national is not None else existing_holiday.is_national
-            existing_holiday.updated_at = datetime.now()
-        else:
-            # Create a new NationalHoliday record
-            new_holiday = NationalHoliday(
-                name=payload.name,
-                date=datetime.strptime(payload.date, "%Y-%m-%d").date(),
-                note=payload.note or "National Holiday",
-                is_national=payload.is_national if payload.is_national is not None else True,
-                client_id=client_id,
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-            )
-            db.add(new_holiday)
-
-        # Commit the transaction
-        db.commit()
-
-        return {"message": "National holiday added or updated successfully."}
-    except ValueError as ve:
-        raise ve
-    except Exception as e:
-        print(f"Error in add_national_holiday: {e}")
-        raise ValueError(f"Error in add_national_holiday: {e}")
-    finally:
-        db.close()
-
 
 async def edit_national_holiday(
     db: Session,

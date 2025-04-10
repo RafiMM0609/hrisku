@@ -29,7 +29,6 @@ class DataNationalHolidayResponse(BaseModel):
     message: str
 
 class DataHolidayRequest(BaseModel):
-    id: Optional[int] = None
     name: Optional[str] = None
     date: Optional[str] = None
     note: Optional[str] = None

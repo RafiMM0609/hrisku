@@ -379,7 +379,8 @@ async def list_history_payment(
         data = db.execute(query).scalars().all()
         num_data = db.execute(query_count).scalar()
         num_page = ceil(num_data / limit)
-
+        for item in data:
+            print("Item : \n", item.amount)
         result = []
         for item in data:
             result.append(HistoryPaymentData(
@@ -480,7 +481,7 @@ async def add_client_payment(client_id):
                 client_id=client_id,
                 date=date,
                 amount=grand_total,
-                status=1,
+                status=0,
             )
             db.add(new_payment)
 

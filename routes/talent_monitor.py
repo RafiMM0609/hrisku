@@ -354,4 +354,68 @@ async def edit_performance_route(
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
 
+@router.put("/leave/approve/{leave_id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def approve_leave(
+    leave_id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # if start_date:
+        #     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        # if end_date:
+        #     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        payroll_data = await TalentRepo.approve_leave(
+            db=db,
+            leave_id=leave_id,
+            user=user
+        )
+        return common_response(CudResponse(
+            message="Success approve leave",
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.put("/leave/reject/{leave_id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def reject_leave(
+    leave_id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # if start_date:
+        #     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        # if end_date:
+        #     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        payroll_data = await TalentRepo.reject_leave(
+            db=db,
+            leave_id=leave_id,
+            user=user
+        )
+        return common_response(CudResponse(
+            message="Success reject leave",
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
 

@@ -139,6 +139,7 @@ class AttendanceGraphData(BaseModel):
     desktop: int
 
 class LeaveSubmission(BaseModel):
+    leave_id: int
     total_pending: int
     type: str
     date_period: int

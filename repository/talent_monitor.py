@@ -45,6 +45,66 @@ import os
 import asyncio
 from repository.performance import add_performance
 
+async def approve_leave(
+    db: Session,
+    leave_id: str,
+    user: User,
+    status: Optional[int] = 2,  # 3: Rejected, 2: Approved
+) -> bool:
+    """
+    Approve or reject a leave request based on the provided status.
+    """
+    try:
+        leave = db.execute(
+            select(LeaveTable).where(LeaveTable.id == leave_id, LeaveTable.isact == True)
+        ).scalar()
+        
+        if not leave:
+            raise ValueError("Leave request not found")
+
+        # Update the status of the leave request
+        leave.status = status
+        leave.updated_at = datetime.now(timezone(TZ))
+        leave.updated_by = user.id_user
+        db.add(leave)
+        db.commit()
+        return True
+    except ValueError as ve:
+        raise ve
+    except Exception as e:
+        print("Error approving leave: ", e)
+        raise ValueError("Failed to approve leave")
+
+async def reject_leave(
+    db: Session,
+    leave_id: str,
+    user: User,
+    status: Optional[int] = 3,  # 3: Rejected, 2: Approved
+) -> bool:
+    """
+    Approve or reject a leave request based on the provided status.
+    """
+    try:
+        leave = db.execute(
+            select(LeaveTable).where(LeaveTable.id == leave_id, LeaveTable.isact == True)
+        ).scalar()
+        
+        if not leave:
+            raise ValueError("Leave request not found")
+
+        # Update the status of the leave request
+        leave.status = status
+        leave.updated_at = datetime.now(timezone(TZ))
+        leave.updated_by = user.id_user
+        db.add(leave)
+        db.commit()
+        return True
+    except ValueError as ve:
+        raise ve
+    except Exception as e:
+        print("Error approving leave: ", e)
+        raise ValueError("Failed to approve leave")
+
 async def get_talent_payroll() -> TalentPayroll:
     """
     Return payroll data using the TalentPayroll Pydantic model.
@@ -286,6 +346,7 @@ async def get_talent_attendance(
         leave_records = leave_query.scalars().all()
         leave_submissions = [
             LeaveSubmission(
+                leave_id=record.id,
                 total_pending=0,  # Placeholder, calculate if needed
                 type=record.type,
                 date_period=(record.end_date - record.start_date).days if record.start_date and record.end_date else 0,

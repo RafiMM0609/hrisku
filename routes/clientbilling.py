@@ -177,3 +177,72 @@ async def list_detail_cb_route(
             )
     except Exception as e:
         return common_response(BadRequest(message=str(e)))
+    
+@router.get("/admin",
+    responses={
+        "200": {"model": ListDetailBillingResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_cb_admin(
+    page:Optional[int]=1,
+    page_size:Optional[int]=10,
+    src:Optional[str]=None,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):  
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data, num_data, num_page = await ClientBilRepo.list_cb_admin(
+            db=db,
+            user=user,
+            src=src,
+            page=page,
+            page_size=page_size,
+        )
+        return common_response(
+            Ok(
+                message="Succes get list client admin",
+                meta={
+                    "count": num_data,
+                    "page_count": num_page,
+                    "page_size": page_size,
+                    "page": page,
+                },
+                data=data
+            )
+            )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.get("/admin/{id}",
+    responses={
+        "200": {"model": ListDetailBillingActionResponse},
+        "400": {"model": BadRequestResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def list_detail_cb_route(
+    id:str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):  
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return common_response(Unauthorized())
+        data = await ClientBilRepo.list_billing_action(
+            db=db,
+            id=id,
+        )
+        return common_response(
+            Ok(
+                message="Succes get lisy client",
+                data=data
+            )
+            )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))

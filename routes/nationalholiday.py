@@ -49,12 +49,13 @@ from schemas.nationalholiday import (
     DataNationalHolidayResponse,
     EditDataHolidayRequest,
     DataHolidayRequest,
+    DataHolidayAddRequest,
 )
 from repository import nationalholiday as NationalHolidayRepo
 
 router = APIRouter(tags=["Holiday"])
 
-@router.get("/{client_id}",
+@router.get("",
     responses={
         "200": {"model": DataNationalHolidayResponse},
         "400": {"model": BadRequestResponse},
@@ -62,7 +63,7 @@ router = APIRouter(tags=["Holiday"])
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def status_checkin(
+async def get_national_holiday(
     client_id: str,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
@@ -76,7 +77,8 @@ async def status_checkin(
     try:
         data = await NationalHolidayRepo.get_data_national_holiday(
             db,
-            client_id
+            client_id,
+            user
         )
         return common_response(Ok(
             message="Success get data",
@@ -87,7 +89,7 @@ async def status_checkin(
         return common_response(BadRequest(message=str(e)))
     
 @router.put(
-    "/{client_id}",
+    "/{id}",
     responses={
         "201": {"model": CudResponschema},
         "400": {"model": UnauthorizedResponse},
@@ -95,8 +97,8 @@ async def status_checkin(
     },
 )
 async def edit_data_holiday(
-    client_id: str,
-    request: EditDataHolidayRequest,
+    id: str,
+    request: DataHolidayRequest,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -108,14 +110,83 @@ async def edit_data_holiday(
         if not user:
             return Unauthorized()
 
-        token = await NationalHolidayRepo.edit_national_holiday_list(
+        token = await NationalHolidayRepo.edit_national_holiday(
             db=db, 
-            list_payload=request,
-            client_id=client_id,
+            payload=request,
+            id=id,
+            user=user,
             )
         return common_response(
             Ok(
                 message="Success edit data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+
+@router.post(
+    "",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def add_data_holiday(
+    client_id: str,
+    request: DataHolidayRequest,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Client id tolong diisi pake id client yang angka ya, formatnya string biar enak.
+    """
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return Unauthorized()
+
+        token = await NationalHolidayRepo.create_data_national_holiday(
+            db=db, 
+            payload=request,
+            client_id=client_id,
+            )
+        return common_response(
+            Ok(
+                message="Success add data"
+            )
+        )
+    except Exception as e:
+        return common_response(BadRequest(message=str(e)))
+    
+@router.delete(
+    "/{id}",
+    responses={
+        "201": {"model": CudResponschema},
+        "400": {"model": UnauthorizedResponse},
+        "500": {"model": InternalServerErrorResponse},
+    },
+)
+async def delete_data_holiday(
+    id: str,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Client id tolong diisi pake id client yang angka ya, formatnya string biar enak.
+    """
+    try:
+        user = get_user_from_jwt_token(db, token)
+        if not user:
+            return Unauthorized()
+
+        await NationalHolidayRepo.delete_data_national_holiday(
+            db=db,
+            national_holiday_id=id,
+        )
+        return common_response(
+            Ok(
+                message="Success delete data"
             )
         )
     except Exception as e:

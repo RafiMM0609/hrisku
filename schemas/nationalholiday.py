@@ -44,3 +44,9 @@ class DataHolidayRequest(BaseModel):
                 raise ValueError("Date must be in the format 'YYYY-MM-DD'")
 class EditDataHolidayRequest(BaseModel):
     data: List[DataHolidayRequest]
+
+class DataHolidayAddRequest(BaseModel):
+    name: Optional[str] = None
+    date: Optional[str] = None
+    note: Optional[str] = None
+    is_national: Optional[bool] = None

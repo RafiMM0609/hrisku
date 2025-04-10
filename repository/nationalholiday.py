@@ -24,8 +24,9 @@ import aiohttp
 from schemas.nationalholiday import (
     DataNationalHoliday, 
     DataHolidayRequest,
-    EditDataHolidayRequest
+    DataHolidayAddRequest,
 )
+from pydantic import ValidationError
 
 
 async def create_update_national_holiday(client_id: int):
@@ -87,6 +88,8 @@ async def create_update_national_holiday(client_id: int):
         if new_holidays:
             db.bulk_save_objects(new_holidays)
 
+        await create_update_national_holiday_default(0, db)
+
         # Commit the transaction
         db.commit()
     except Exception as e:
@@ -95,21 +98,161 @@ async def create_update_national_holiday(client_id: int):
     finally:
         db.close()
 
+async def create_update_national_holiday_default(
+    client_id: int,
+    db: Session,
+):
+    """
+    Optimized function to create or update national holiday data.
+    """
+    try:
+        open_api_url = "https://api-harilibur.vercel.app/api"
+
+        # Fetch data from the Open API
+        async with aiohttp.ClientSession() as session:
+            async with session.get(open_api_url) as response:
+                if response.status == 200:
+                    holidays = await response.json()
+                else:
+                    raise ValueError(f"Failed to fetch data from API. Status code: {response.status}")
+
+        # Fetch existing holidays in a single query
+        existing_holidays = db.query(NationalHoliday).filter(
+            NationalHoliday.client_id == client_id,
+            NationalHoliday.isact==True,
+        ).all()
+        existing_holidays_map = {
+            (holiday.date, holiday.name): holiday for holiday in existing_holidays
+        }
+
+        # Prepare new and updated records
+        new_holidays = []
+        for holiday in holidays:
+            holiday_date = holiday.get("holiday_date")
+            holiday_name = holiday.get("holiday_name")
+            is_national_holiday = holiday.get("is_national_holiday", True)
+
+            if not holiday_date or not holiday_name:
+                continue  # Skip invalid data
+            # Convert string date to date object
+            holiday_date = datetime.strptime(holiday_date, "%Y-%m-%d").date()
+            key = (holiday_date, holiday_name)
+            if key in existing_holidays_map:
+                # Update the existing record
+                existing_holiday = existing_holidays_map[key]
+                existing_holiday.is_national = is_national_holiday
+                existing_holiday.updated_at = datetime.now()
+                db.add(existing_holiday)
+            else:
+                # Create a new record
+                new_holidays.append(NationalHoliday(
+                    name=holiday_name,
+                    date=holiday_date,
+                    note="National Holiday" if is_national_holiday else "Local Holiday",
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                    is_national=is_national_holiday,
+                    client_id=client_id,
+                ))
+
+        # Bulk insert new holidays
+        if new_holidays:
+            db.bulk_save_objects(new_holidays)
+
+        # Commit the transaction
+        db.commit()
+    except Exception as e:
+        print(f"Error in create_update_national_holiday: {e}")
+        raise ValueError(f"Error in create_update_national_holiday: {e}")
+
+async def create_data_national_holiday(
+    db: Session,
+    payload: DataHolidayAddRequest,
+    client_id: str,
+):
+    
+    """
+    This function is used to create a new national holiday record.
+    """
+    try:
+        new_holiday = NationalHoliday(
+            name=payload.name,
+            date=datetime.strptime(payload.date, "%Y-%m-%d").date(),
+            note=payload.note or "National Holiday",
+            is_national=payload.is_national if payload.is_national is not None else True,
+            client_id=client_id,
+            created_at=datetime.now(),
+        )
+        db.add(new_holiday)
+        db.commit()
+        return "oke"
+    except Exception as e:
+        print(f"Error in create_data_national_holiday: {e}")
+        raise ValueError(f"Error in create_data_national_holiday: {e}")
+    
+async def delete_data_national_holiday(
+    db: Session,
+    national_holiday_id: int,
+):
+    """
+    This function is used to delete a national holiday record.
+    """
+    try:
+        # Fetch the existing holiday record
+        existing_holiday = db.query(NationalHoliday).filter(
+            NationalHoliday.id == national_holiday_id,
+            NationalHoliday.isact==True,
+        ).first()
+
+        if not existing_holiday:
+            raise ValueError("National holiday not found.")
+
+        # Mark the record as inactive (soft delete)
+        existing_holiday.isact = False
+        db.add(existing_holiday)
+        db.commit()
+        return "oke"
+    except ValueError as ve:
+        raise ve
+    except Exception as e:
+        print(f"Error in delete_data_national_holiday: {e}")
+        raise ValueError(f"Error in delete_data_national_holiday: {e}")
+
+
 async def get_data_national_holiday(
     db:Session,
     client_id: str,
+    user: User,
 ) -> List[DataNationalHoliday]:
     """
     This function is used to get data national holiday filtered by client_id.
     This function will return a list of national holiday data.
     This function needs to be fast and efficient.
+    This filtered by role if role == 2 will get their client
     """
     try:
         # Query the NationalHoliday table for the given client_id and isact == True
-        national_holidays = db.query(NationalHoliday).filter(
-            NationalHoliday.client_id == client_id,
-            NationalHoliday.isact == True
-        ).all()
+
+        if user.roles[0].id == 2:
+            # Client role
+            query = db.query(NationalHoliday).filter(
+                NationalHoliday.client_id == client_id,
+                NationalHoliday.isact == True,
+            )
+        elif user.roles[0].id == 1:
+            # Super Admin role
+            query = db.query(NationalHoliday).filter(
+                NationalHoliday.client_id == client_id,
+                NationalHoliday.isact == True,
+            )
+        else:
+            # Admin role
+            query = db.query(NationalHoliday).filter(
+                NationalHoliday.client_id == 0,
+                NationalHoliday.isact == True,
+            )
+        
+        national_holidays = query.all()
 
         if not national_holidays:
             return [
@@ -187,59 +330,39 @@ async def add_national_holiday(
     finally:
         db.close()
 
-async def edit_national_holiday_list(
+
+async def edit_national_holiday(
     db: Session,
-    list_payload: EditDataHolidayRequest,
-    client_id: str,
+    payload: DataHolidayRequest,
+    id: str,
+    user: User,
 ):
     """
     Optimized function to add or update national holiday data in bulk.
     """
     try:
-        # Extract IDs from the payload
-        payload_ids = [payload.id for payload in list_payload.data if payload.id]
-
         # Fetch existing holidays in a single query
         existing_holidays = db.query(NationalHoliday).filter(
-            NationalHoliday.client_id == client_id,
-            NationalHoliday.id.in_(payload_ids),
+            NationalHoliday.client_id == user.client_id,
+            NationalHoliday.id == id,
             NationalHoliday.isact==True,
-        ).all()
-        existing_holidays_map = {holiday.id: holiday for holiday in existing_holidays}
+        ).first()
 
-        # Prepare new and updated records
-        new_holidays = []
-        for payload in list_payload.data:
-            if payload.id and payload.id in existing_holidays_map:
-                # Update existing holiday
-                holiday = existing_holidays_map[payload.id]
-                holiday.name = payload.name or holiday.name
-                holiday.date = datetime.strptime(payload.date, "%Y-%m-%d").date() if payload.date else holiday.date
-                holiday.note = payload.note or holiday.note
-                holiday.is_national = payload.is_national if payload.is_national is not None else holiday.is_national
-                holiday.updated_at = datetime.now()
-                db.add(holiday)
-            else:
-                # Create new holiday
-                new_holidays.append(NationalHoliday(
-                    name=payload.name,
-                    date=datetime.strptime(payload.date, "%Y-%m-%d").date(),
-                    note=payload.note or "National Holiday",
-                    is_national=payload.is_national if payload.is_national is not None else True,
-                    client_id=client_id,
-                    created_at=datetime.now(),
-                ))
-
-        # Bulk insert new holidays
-        if new_holidays:
-            db.bulk_save_objects(new_holidays)
-
+        if not existing_holidays:
+            raise ValueError("No existing national holidays found for the given client_id.")
+        # Update existing holiday
+        existing_holidays.name = payload.name or existing_holidays.name
+        existing_holidays.date = datetime.strptime(payload.date, "%Y-%m-%d").date() if payload.date else existing_holidays.date
+        existing_holidays.note = payload.note or existing_holidays.note
+        existing_holidays.is_national = payload.is_national if payload.is_national is not None else existing_holidays.is_national
+        existing_holidays.updated_at = datetime.now()
+        db.add(existing_holidays)
         # Commit the transaction
         db.commit()
 
-        return {"message": "National holidays added or updated successfully."}
+        return {"message": "National holiday updated successfully."}
     except ValueError as ve:
         raise ve
     except Exception as e:
-        print(f"Error in add_national_holiday_list: {e}")
-        raise ValueError(f"Error in add_national_holiday_list: {e}")
+        print(f"Error in edit_national_holiday_list: {e}")
+        raise ValueError(f"Error in edit_national_holiday_list: {e}")

@@ -64,7 +64,6 @@ router = APIRouter(tags=["Holiday"])
     },
 )
 async def get_national_holiday(
-    client_id: str,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
 ):

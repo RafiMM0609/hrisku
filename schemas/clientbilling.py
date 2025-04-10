@@ -57,6 +57,27 @@ class ListDetailBillingResponse(BaseModel):
     code: int
     message: str
 
+class HistoryPaymentData(BaseModel):
+    id: str
+    date: str  # Format: "December 2024"
+    client_id: int
+    amount: float
+    total_talent: int
+    status: Organization
+    evidence_payment: str
+    @classmethod
+    def validate_date(cls, date: str) -> bool:
+        # Regex to match "Month YYYY" format
+        pattern = r"^(January|February|March|April|May|June|July|August|September|October|November|December) \d{4}$"
+        return bool(re.match(pattern, date))
+
+class HistoryPaymentResponse(BaseModel):
+    meta: MetaResponse
+    data: HistoryPaymentData
+    status: str
+    code: int
+    message: str
+
 class ListDetailKeterangan(BaseModel):
     keterangan: str
     nominal: Optional[float]=None

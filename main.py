@@ -25,6 +25,7 @@ from routes.mobile import router as MobileRouter
 from routes.outlet import router as OutletRouter
 from routes.nationalholiday import router as NationalHolidayRouter
 from routes.permission import router as PermissionRouter
+from routes.historypayment import router as HistoryPaymentRouter
 
 if SENTRY_DSN != None:  # NOQA
     sentry_sdk.init(
@@ -90,6 +91,7 @@ app.include_router(OutletRouter, prefix="/outlet")
 app.include_router(MobileRouter, prefix="/mobile")
 app.include_router(NationalHolidayRouter, prefix="/holiday")
 app.include_router(PermissionRouter, prefix="/permission")
+app.include_router(HistoryPaymentRouter, prefix="/history-payment")
 
 @app.get("/")
 async def read_root():  # <-- Perbaikan di sini

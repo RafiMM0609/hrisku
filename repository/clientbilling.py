@@ -19,6 +19,7 @@ from schemas.clientbilling import (
     Organization,
     ListDetailKeterangan,
     ListDetailBillingAction,
+    HistoryPaymentData,
     )
 from pydantic import BaseModel
 from datetime import datetime, timedelta, time, date
@@ -339,6 +340,61 @@ async def list_cb_admin(
                 verify=item.status == 1 if hasattr(item, 'status') else False
             ).model_dump())
         
+        return (result, num_data, num_page)
+    except Exception as e:
+        print("Error list detail: \n", e)
+        raise ValueError("Failed get data list payment client")
+
+async def list_history_payment(
+    db: Session,
+    user: User,
+    src: Optional[str] = None,
+    page: Optional[int] = 1,
+    page_size: Optional[int] = 10,
+) -> tuple[List[HistoryPaymentData], int, int]:
+    try:
+        limit = page_size
+        offset = (page - 1) * limit
+
+        query = (
+            select(ClientPayment)
+            .outerjoin(Client, Client.id == ClientPayment.client_id)
+            .filter(ClientPayment.isact == True)
+            .filter(Client.id == user.client_id)  # Corrected usage of user.client_id
+        )
+
+        query_count = (
+            select(func.count(ClientPayment.id))
+            .outerjoin(Client, Client.id == ClientPayment.client_id)
+            .filter(ClientPayment.isact == True)
+            .filter(Client.id == user.client_id)  # Corrected usage of user.client_id
+        )
+
+        query = (
+            query.order_by(ClientPayment.id.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+
+        data = db.execute(query).scalars().all()
+        num_data = db.execute(query_count).scalar()
+        num_page = ceil(num_data / limit)
+
+        result = []
+        for item in data:
+            result.append(HistoryPaymentData(
+                id=str(item.id),
+                date=item.date.strftime("%B %Y") if item.date else None,
+                client_id=item.client_id,
+                amount=item.amount,
+                total_talent=len(item.clients.user_client) if hasattr(item.clients, 'user_client') else 0,  # Fixed len usage
+                status=Organization(
+                    id=item.status if hasattr(item, 'status') else 0,
+                    name=item.status_payment.name if item.status_payment else None
+                ),
+                evidence_payment=generate_link_download(item.evidence_payment) if hasattr(item, 'evidence_payment') else ""
+            ).model_dump())
+
         return (result, num_data, num_page)
     except Exception as e:
         print("Error list detail: \n", e)

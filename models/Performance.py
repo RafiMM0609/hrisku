@@ -11,6 +11,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from models import Base
+from models.Payroll import Payroll
 
 
 class Performance(Base):
@@ -29,7 +30,9 @@ class Performance(Base):
     created_by = Column(String(36), nullable=True)
     updated_by = Column(String(36), nullable=True)
     isact = Column(Boolean, default=True)
+    payroll_id = Column(Integer, ForeignKey("payroll.id"), nullable=True)
 
     # Many to Many
     users = relationship("User", back_populates="performance_user", foreign_keys=[emp_id])
     clients = relationship("Client", back_populates="performance_client", foreign_keys=[client_id])
+    payrolls = relationship("Payroll", back_populates="performances", foreign_keys=[payroll_id])

@@ -36,5 +36,6 @@ class Payroll(Base):
 
     # Many to One
     clients = relationship("Client", back_populates="client_payroll", foreign_keys=[client_id])
+    performances = relationship("Performance", back_populates="payrolls")
 
 

@@ -20,6 +20,7 @@ from models import SessionLocal
 
 async def add_performance(
     emp_id: str,  # User ID
+    payroll_id: str,  # Payroll ID
 ):
     """
     Add performance data for an employee.
@@ -68,6 +69,7 @@ async def add_performance(
             notes="Give feedback",
             created_at=datetime.now(timezone(TZ)),
             created_by=emp_id,
+            payroll_id=payroll_id,
         )
         db.add(performance_data)
         db.commit()

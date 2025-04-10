@@ -75,7 +75,7 @@ async def get_list_payroll(
                 ListPayroll(
                     id=payroll.id,
                     date=payroll.payment_date.strftime("%B %Y") if payroll.payment_date else None,
-                    performance="You are doing great 10/10",
+                    performance=payroll.performances.notes if payroll.performances else "You doing good",
                     utilization="100%",
                     net_salary=format_to_idr(payroll.net_salary),  # Convert to float
                 ).model_dump()

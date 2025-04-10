@@ -195,10 +195,10 @@ async def get_talent_performance(
                 performance_level = "Meet Expectations"
             else:
                 performance_level = "Needs Improvement"
-        background_tasks.add_task(
-            add_performance,
-            emp_id=user.id,
-        )
+        # background_tasks.add_task(
+        #     add_performance,
+        #     emp_id=user.id,
+        # )
         return TalentPerformance(
             name=user.name,
             role_name=user.roles[0].name if user.roles else None,

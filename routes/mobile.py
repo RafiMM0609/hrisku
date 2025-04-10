@@ -474,7 +474,7 @@ async def list_payroll_route(
         "500": {"model": InternalServerErrorResponse},
     },
 )
-async def list_leave_route(
+async def data_checkout_route(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
 ):

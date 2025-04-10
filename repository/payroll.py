@@ -18,7 +18,9 @@ from models.User import User
 from tempfile import NamedTemporaryFile
 from starlette.datastructures import UploadFile
 from core.file import upload_file, upload_file_to_tmp
+from repository.performance import add_performance
 import io
+import asyncio
 
 def get_days_in_month(year, month):
     return calendar.monthrange(year, month)[1]
@@ -380,6 +382,18 @@ async def add_monthly_salary_emp(emp_id, client_id):
                 net_salary=net_salary,
             )
             db.add(new_payment)
+            db.commit()
+            db.refresh(new_payment)
+            new_payroll_id = new_payment.id
+            # Add performance
+            asyncio.create_task(
+                add_performance(
+                    emp_id=emp_id,
+                    payroll_id=new_payroll_id,
+                )
+            )
+            # await add_performance(emp_id=emp_id, payroll_id=new_payroll_id)
+
         db.commit()
         return "oke"
     except Exception as e:

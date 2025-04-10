@@ -17,7 +17,7 @@ from core.responses import (
 )
 # from core.myredis import get_data_with_cache
 from datetime import datetime
-from core.security import get_user_from_jwt_token, oauth2_scheme, generate_jwt_token_from_user
+from core.security import get_user_from_jwt_token, oauth2_scheme, generate_jwt_token_from_user, generate_jwt_token_from_user_mobile
 from schemas.common import NoContentResponse, InternalServerErrorResponse, UnauthorizedResponse, BadRequestResponse, CudResponschema
 from repository import mobile as mobileRepo
 from repository import shift as shiftRepo
@@ -123,7 +123,7 @@ async def login(
         # ========= END PENGECEKAN STATUS USER
 
         user = is_valid
-        token = await generate_jwt_token_from_user(user=user)
+        token = await generate_jwt_token_from_user_mobile(user=user)
         await authRepo.create_user_session(db=db, user_id=user.id, token=token)
 
         # Extract username and password from the request

@@ -310,7 +310,10 @@ async def talent_payroll_route(
         user = get_user_from_jwt_token(db, token)
         if not user:
             return common_response(Unauthorized())
-        payroll_data = await TalentRepo.get_talent_payroll()
+        payroll_data = await TalentRepo.get_talent_payroll(
+            db=db,
+            user_id=talent_id,
+        )
         return common_response(Ok(
             data=payroll_data,
             message="Success get payroll data"

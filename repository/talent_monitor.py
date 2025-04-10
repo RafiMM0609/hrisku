@@ -15,6 +15,10 @@ from models.UserRole import UserRole
 from models.Attendance import Attendance
 from models.LeaveTable import LeaveTable
 from models.TimeSheet import TimeSheet
+from models.Payroll import Payroll
+from models.EmployeeAllowances import EmployeeAllowances
+from models.EmployeeTax import EmployeeTax
+from models.BpjsEmployee import BpjsEmployee
 from datetime import datetime, timedelta, date
 from pytz import timezone
 from settings import TZ, LOCAL_PATH
@@ -105,46 +109,99 @@ async def reject_leave(
         print("Error approving leave: ", e)
         raise ValueError("Failed to approve leave")
 
-async def get_talent_payroll() -> TalentPayroll:
+async def get_talent_payroll(db: Session, user_id: str) -> TalentPayroll:
     """
     Return payroll data using the TalentPayroll Pydantic model.
     """
     try:
-        # Get the current date and time in the specified timezone
-        now = datetime.now(timezone(TZ))
-        month = now.strftime("%m")
-        year = now.strftime("%Y")
-        
-        # Create a unique filename for the payroll file
-        filename = f"payroll_{secrets.token_hex(4)}_{month}_{year}.xlsx"
-        
-        # Define the local path for saving the payroll file
-        local_path = os.path.join(LOCAL_PATH, "payroll", filename)
-        
-        # Generate the download link for the payroll file
-        download_link = generate_link_download(local_path)
-        
+        # Fetch user details
+        user_query = db.execute(select(User).where(User.id_user == user_id, User.isact == True))
+        user = user_query.scalar_one_or_none()
+        if not user:
+            raise ValueError("User not found")
+
+        # Fetch payroll data for the user
+        payroll_query = db.execute(
+            select(Payroll)
+            .where(Payroll.emp_id == user.id, Payroll.isact == True)
+            .order_by(Payroll.payment_date.desc())
+        )
+        payroll_records = payroll_query.scalars().all()
+
+        payroll_data = []
+
+        for record in payroll_records:
+            # Calculate the first and last day of the month for the payroll's payment_date
+            first_day_of_month = record.payment_date.replace(day=1)
+            last_day_of_month = (record.payment_date.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+            # Fetch related tax, allowances, BPJS names and amounts for the specific month
+            tax_query = db.execute(
+                select(EmployeeTax.name, EmployeeTax.amount)
+                .where(
+                    EmployeeTax.emp_id == user.id,
+                    EmployeeTax.isact == True,
+                    EmployeeTax.created_at >= first_day_of_month,
+                    EmployeeTax.created_at <= last_day_of_month
+                )
+                .order_by(EmployeeTax.created_at)
+            )
+            taxes = tax_query.fetchall()
+
+            allowance_query = db.execute(
+                select(EmployeeAllowances.name, EmployeeAllowances.amount)
+                .where(
+                    EmployeeAllowances.emp_id == user.id,
+                    EmployeeAllowances.isact == True,
+                    EmployeeAllowances.created_at >= first_day_of_month,
+                    EmployeeAllowances.created_at <= last_day_of_month
+                )
+                .order_by(EmployeeAllowances.created_at)
+            )
+            allowances = allowance_query.fetchall()
+
+            bpjs_query = db.execute(
+                select(BpjsEmployee.name, BpjsEmployee.amount)
+                .where(
+                    BpjsEmployee.emp_id == user.id,
+                    BpjsEmployee.isact == True,
+                    BpjsEmployee.created_at >= first_day_of_month,
+                    BpjsEmployee.created_at <= last_day_of_month
+                )
+                .order_by(BpjsEmployee.created_at)
+            )
+            bpjs = bpjs_query.fetchall()
+
+            # Combine all names and amounts into header_table and value
+            header_table = [item[0] for item in taxes + bpjs + allowances] + ["Net Salary"]
+            value = [format_to_idr(record.monthly_paid)]+[format_to_idr(item[1]) for item in taxes + bpjs + allowances] + [format_to_idr(record.net_salary)]
+
+            # Append to payroll data
+            payroll_data.append(
+                ListTalentPayroll(
+                    bulan=record.payment_date.strftime("%B %Y") if record.payment_date else None,
+                    header_table=header_table,
+                    value=value
+                )
+            )
+
         # Return the TalentPayroll model
         return TalentPayroll(
-            emp_name=None,  # Placeholder, update if employee name is available
-            emp_code=None,  # Placeholder, update if employee code is available
-            emp_role=None,  # Placeholder, update if employee role is available
-            payroll=[
-                ListTalentPayroll(
-                    month=f"{month}-{year}",
-                    gaji_pokok=0.00,
-                    tunjangan_makan=0.00,
-                    bpjs_kesehatan=0.00,
-                    pajak_pph21=0.00,
-                    bonus=0.00,
-                    agency_fee=0.00,
-                    total=0.00
-                )
-            ]
+            emp_name=user.name,
+            emp_code=user.nik,
+            emp_role=user.roles[0].name if user.roles else None,
+            payroll=payroll_data
         ).model_dump()
+
+    except ValueError as ve:
+        print(f"Validation error in get_talent_payroll: {ve}")
+        raise ve
     except Exception as e:
-        print("Error get talent payroll: \n", e)
+        print(f"Error in get_talent_payroll: {e}")
         raise ValueError("Failed to get talent payroll")
+
+def format_to_idr(value):
+    return f"Rp {value:,.2f}".replace(',', '.').replace('.', ',', 1)
 
 async def get_talent_performance(
     db:Session,

@@ -203,14 +203,9 @@ class ListTalentPayroll(BaseModel):
     """
     make it al to optional and give default value None or []
     """
-    month:Optional[str]=None #March 2025
-    gaji_pokok:Optional[float]=0.00
-    tunjangan_makan:Optional[float]=0.00
-    bpjs_kesehatan:Optional[float]=0.00
-    pajak_pph21:Optional[float]=0.00
-    bonus:Optional[float]=0.00
-    agency_fee:Optional[float]=0.00
-    total:Optional[float]=0.00
+    bulan:Optional[str]=None
+    header_table:Optional[List[str]]=None
+    value:Optional[List[str]]=None
 
 class TalentPayroll(BaseModel):
     """

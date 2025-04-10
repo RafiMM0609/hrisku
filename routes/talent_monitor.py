@@ -278,6 +278,7 @@ async def talent_performance_route(
             db=db,
             user_id=talent_id,
             background_tasks=background_tasks,
+            request_user=user,
             # start_date=start_date,
             # end_date=end_date
         )

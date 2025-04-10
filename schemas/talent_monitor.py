@@ -190,6 +190,7 @@ class PerformanceHistory(BaseModel):
     hardskill:Optional[int]=0
     total_point:Optional[str]=None
     notes:Optional[str]=None
+    isedit:Optional[bool]=None
 
 class TalentPerformance(BaseModel):
     name: str

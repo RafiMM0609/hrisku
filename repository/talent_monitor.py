@@ -89,6 +89,7 @@ async def get_talent_payroll() -> TalentPayroll:
 async def get_talent_performance(
     db:Session,
     user_id:str,
+    request_user:User,
     background_tasks: Optional[any] = None,
 )->TalentPerformance:
     try:
@@ -99,13 +100,18 @@ async def get_talent_performance(
             raise ValueError("User not found")
         ls_performance = []
         for item in user.performance_user:
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+            isedit = True if item.date and item.date.month == current_month and item.date.year == current_year else False
+            isedit = isedit if request_user.roles[0].id == 2 else False
             ls_performance.append(PerformanceHistory(
                 id=item.id,
                 date=item.date.strftime("%A, %d %B %Y") if item.date else None,
                 softskill=item.softskill,
                 hardskill=item.hardskill,
                 total_point=f"{item.softskill+item.hardskill}/10 ",
-                notes=item.notes
+                notes=item.notes,
+                isedit=isedit,
              ))
         
         # Determine performance level based on current month's total points

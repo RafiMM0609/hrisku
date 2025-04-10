@@ -76,7 +76,6 @@ async def get_national_holiday(
     try:
         data = await NationalHolidayRepo.get_data_national_holiday(
             db,
-            client_id,
             user
         )
         return common_response(Ok(

@@ -56,7 +56,7 @@ async def add_performance(
         ).first()
 
         if existing_performance:
-            print(f"Performance data for user {emp_id} already exists for this month.")
+            raise ValueError(f"Performance data for user {emp_id} already exists for this month.")
 
         # Generate model from the request data
         performance_data = Performance(

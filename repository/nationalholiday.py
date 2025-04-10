@@ -221,7 +221,6 @@ async def delete_data_national_holiday(
 
 async def get_data_national_holiday(
     db:Session,
-    client_id: str,
     user: User,
 ) -> List[DataNationalHoliday]:
     """
@@ -236,13 +235,13 @@ async def get_data_national_holiday(
         if user.roles[0].id == 2:
             # Client role
             query = db.query(NationalHoliday).filter(
-                NationalHoliday.client_id == client_id,
+                NationalHoliday.client_id == user.client_id,
                 NationalHoliday.isact == True,
             )
         elif user.roles[0].id == 1:
             # Super Admin role
             query = db.query(NationalHoliday).filter(
-                NationalHoliday.client_id == client_id,
+                NationalHoliday.client_id == user.client_id,
                 NationalHoliday.isact == True,
             )
         else:

@@ -225,6 +225,7 @@ async def get_talent_timesheet(
 async def get_talent_attendance(
     db: Session, 
     user_id: str, 
+    user:User,
     start_date: date = None, 
     end_date: date = None
 ) -> TalentAttendance:
@@ -291,7 +292,7 @@ async def get_talent_attendance(
                     id=record.status_leave.id if record.status_leave and record.status_leave else 0,
                     name=record.status_leave.name if record.status_leave and record.status_leave else None
                 ),
-                isedit=True if record.status_leave.id == 1 else False
+                isedit=True if record.status_leave.id == 1 and user.roles[0].id == 2 else False
             )
             for record in leave_records
         ]

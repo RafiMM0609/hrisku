@@ -204,7 +204,8 @@ async def talent_attendance_route(
             db=db,
             user_id=talent_id,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            user=user
         )
         return common_response(Ok(
             data=attendance_data,

@@ -291,7 +291,7 @@ async def get_data_national_holiday(
 
         if not national_holidays:
             return [
-                DataNationalHoliday()
+                DataNationalHoliday().model_dump()
             ]
 
         # Map the results to the DataNationalHoliday schema
